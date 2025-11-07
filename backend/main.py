@@ -5,11 +5,12 @@ Coordinates OCR, translation, CRM automation, and document workflows.
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+import io
 from datetime import date, datetime
 import asyncio
 import os
@@ -282,6 +283,11 @@ class OneCPaymentNotification(BaseModel):
     comment: Optional[str] = None
 
 
+class OneCRealizationRequest(BaseModel):
+    invoice_uuid: str
+    lead_id: int
+
+
 # ========== 1C INTEGRATION ENDPOINTS ==========
 
 
@@ -318,7 +324,8 @@ async def create_invoice_via_onec(request: OneCInvoiceRequest):
                 document_number=str(invoice_number),
                 extra={"Источник": "1C", "Валюта": request.currency},
             )
-        return {"invoice": result}
+        pdf_ref = onec_service.extract_ref_from_pdf_url(result.get("pdfUrl", ""))
+        return {"invoice": result, "pdfRef": pdf_ref}
     except Exception as exc:
         api_logger.error(f"1C invoice generation failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Invoice creation failed: {exc}")
@@ -386,6 +393,60 @@ async def onec_payment_notification(notification: OneCPaymentNotification):
     except Exception as exc:
         api_logger.error(f"Processing payment notification failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to process payment notification")
+
+
+@app.post("/api/integrations/1c/realizations")
+async def create_realization(request: OneCRealizationRequest):
+    try:
+        result = await onec_service.create_realization(request.invoice_uuid)
+        doc_number = result.get("docNumber") or result.get("waybillNumber")
+        if doc_number:
+            await crm_service.record_generated_document(
+                lead_id=request.lead_id,
+                document_type="Реализация",
+                document_number=str(doc_number),
+            )
+        pdf_ref = onec_service.extract_ref_from_pdf_url(result.get("pdfUrl", ""))
+        return {"realization": result, "pdfRef": pdf_ref}
+    except Exception as exc:
+        api_logger.error(f"1C realization creation failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Realization creation failed: {exc}")
+
+
+@app.get("/api/integrations/1c/invoices/{ref}/pdf")
+async def download_invoice_pdf(ref: str):
+    try:
+        pdf_bytes = await onec_service.fetch_invoice_pdf(ref)
+        if not pdf_bytes:
+            raise HTTPException(status_code=404, detail="Invoice PDF not found")
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=invoice_{ref}.pdf"},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        api_logger.error(f"Downloading invoice PDF failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to download invoice PDF")
+
+
+@app.get("/api/integrations/1c/realizations/{ref}/pdf")
+async def download_realization_pdf(ref: str):
+    try:
+        pdf_bytes = await onec_service.fetch_realization_pdf(ref)
+        if not pdf_bytes:
+            raise HTTPException(status_code=404, detail="Realization PDF not found")
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=realization_{ref}.pdf"},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        api_logger.error(f"Downloading realization PDF failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to download realization PDF")
 
 
 # ========== OCR ENDPOINTS ==========

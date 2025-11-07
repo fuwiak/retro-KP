@@ -862,6 +862,18 @@
       </div>
     </div>
 
+    <!-- LOG DRAWER -->
+    <button id="logToggle" style="position: fixed; bottom: 12px; right: 12px; border: 1px solid var(--ui-color); color: var(--ui-color); background: rgba(0, 0, 0, 0.7); padding: 6px 10px; font-size: 0.75rem; cursor: pointer; text-shadow: 0 0 6px var(--ui-color);">
+      📟 LOGS
+    </button>
+    <div id="logDrawer" style="position: fixed; bottom: -320px; right: 12px; width: 360px; height: 300px; background: rgba(0,0,0,0.92); border: 1px solid var(--ui-color); box-shadow: 0 0 12px var(--ui-color); padding: 10px; transition: bottom 0.4s ease; display: flex; flex-direction: column; z-index: 120;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <h2 style="margin: 0; font-size: 0.85rem;">LOG TERMINAL</h2>
+        <button id="logClose" style="background: rgba(0,0,0,0.6); border: 1px solid var(--ui-color); color: var(--ui-color); font-size: 0.7rem; padding: 2px 6px; cursor: pointer;">✖</button>
+      </div>
+      <div id="logArea" style="flex: 1; overflow-y: auto; font-size: 0.75rem; line-height: 1.2rem; background: rgba(0,0,0,0.6); border: 1px dashed var(--ui-color); padding: 6px;"></div>
+    </div>
+
     <script type="module" src="/src/gui.js"></script>
   </body>
 </html>

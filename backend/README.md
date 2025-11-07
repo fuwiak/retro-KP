@@ -80,10 +80,16 @@ AMO_LEAD_STATUS_ID=...
 AMO_RESPONSIBLE_USER_ID=...
 ONEC_BASE_URL=https://onec.example.com/api
 ONEC_API_KEY=...
+ONEC_AUTH_HEADER=Basic base64token
 ONEC_TIMEOUT_SECONDS=15
-ONEC_INVOICE_ENDPOINT=/documents/invoice
+ONEC_INVOICE_ENDPOINT=/PostDataInvoice
+ONEC_INVOICE_PDF_ENDPOINT=/PostDataInvoice?format=pdf
+ONEC_REALIZATION_ENDPOINT=/PostDataRealization
+ONEC_REALIZATION_PDF_ENDPOINT=/PostDataRealization?format=pdf
 ONEC_FULFILLMENT_ENDPOINT=/documents/fulfillment
 ```
+
+> Jeśli 1С wymaga Basic Auth, ustaw `ONEC_AUTH_HEADER=Basic base64-token`. W przeciwnym razie pozostaw to pole puste, a nagłówek `Authorization` zostanie zbudowany jako `Bearer {ONEC_API_KEY}`.
 
 ### 6. Run the Server
 
@@ -126,9 +132,12 @@ API documentation (Swagger UI): `http://localhost:3000/docs`
 - `POST /api/crm/leads/{lead_id}/documents` - Manage document checklist tasks
 
 ### 1C Integration
-- `POST /api/integrations/1c/invoices` - Создание счёта в 1С и возврат PDF + номера
-- `POST /api/integrations/1c/fulfillment` - Создание накладной и акта (PDF + номера)
-- `POST /api/integrations/1c/payment-notification` - Webhook от 1С с подтверждением оплаты
+- `POST /api/integrations/1c/invoices` - Создание счёта; ответ содержит `pdfRef`
+- `GET /api/integrations/1c/invoices/{ref}/pdf` - Скачать печатную форму счёта
+- `POST /api/integrations/1c/realizations` - Создание реализации по UUID счёта
+- `GET /api/integrations/1c/realizations/{ref}/pdf` - Скачать печатную форму реализации
+- `POST /api/integrations/1c/fulfillment` - Создание накладной/акта (legacy)
+- `POST /api/integrations/1c/payment-notification` - Webhook оплаты
 
 ## Development
 

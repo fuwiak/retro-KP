@@ -51,7 +51,7 @@ docker-compose up --build
 
 - **Inbox AI**: Groq LLM фильтрует входящие письма, формирует КП в один клик
 - **Интеграция amoCRM**: Создание контактов/сделок, напоминания, чек-листы документов
-- **Документооборот 1С**: REST API для запроса счетов, накладных и актов + webhook оплаты от 1С
+- **Документооборот 1С**: REST API для запросов счёта, накладной, акта + webhook оплат из 1С
 - **OCR + Перевод**: LLM/Tesseract для технических PDF, авто-перевод RU→EN
 - **Экспорт отчётов**: DOCX, XLSX и PDF с оверлеями
 
@@ -128,8 +128,12 @@ AMO_TOKEN_FILE=amo_tokens.json
 # 1C API
 ONEC_BASE_URL=https://onec.example.com/api
 ONEC_API_KEY=...
+ONEC_AUTH_HEADER=Basic base64token
 ONEC_TIMEOUT_SECONDS=15
-ONEC_INVOICE_ENDPOINT=/documents/invoice
+ONEC_INVOICE_ENDPOINT=/PostDataInvoice
+ONEC_INVOICE_PDF_ENDPOINT=/PostDataInvoice?format=pdf
+ONEC_REALIZATION_ENDPOINT=/PostDataRealization
+ONEC_REALIZATION_PDF_ENDPOINT=/PostDataRealization?format=pdf
 ONEC_FULFILLMENT_ENDPOINT=/documents/fulfillment
 ```
 
@@ -151,7 +155,7 @@ Logi zapisywane w `backend/logs/`:
 - Node.js 18+
 - Tesseract OCR (dla klasycznego OCR)
 - Groq API key (dla LLM OCR)
-- Dostęp do skrzynки IMAP, poświadczenia amoCRM oraz REST API 1С
+- Dostęp do skrzynki IMAP, poświadczenia amoCRM oraz REST API 1С
 
 ## 📚 Dokumentacja API
 

@@ -7,6 +7,10 @@ import * as crmClient from "./crmClient.js";
 const els = {
   colorPicker: document.getElementById("colorPicker"),
   statusLine: document.getElementById("statusLine"),
+  logToggle: document.getElementById("logToggle"),
+  logDrawer: document.getElementById("logDrawer"),
+  logArea: document.getElementById("logArea"),
+  logClose: document.getElementById("logClose"),
   crmRefreshBtn: document.getElementById("crmRefreshBtn"),
   crmRelevantOnly: document.getElementById("crmRelevantOnly"),
   crmEmailLimit: document.getElementById("crmEmailLimit"),
@@ -36,6 +40,13 @@ const els = {
 };
 
 function log(message, ...args) {
+  const time = new Date().toLocaleTimeString();
+  if (els.logArea) {
+    const line = document.createElement("div");
+    line.innerHTML = `[${time}] ${message}`;
+    els.logArea.appendChild(line);
+    els.logArea.scrollTop = els.logArea.scrollHeight;
+  }
   console.log(message, ...args);
 }
 
@@ -610,6 +621,18 @@ async function handleCrmSend() {
 
 if (els.colorPicker) {
   els.colorPicker.addEventListener("input", (event) => setThemeColor(event.target.value));
+}
+
+if (els.logToggle && els.logDrawer) {
+  els.logToggle.addEventListener("click", () => {
+    els.logDrawer.style.bottom = els.logDrawer.style.bottom === "40px" ? "-320px" : "40px";
+  });
+}
+
+if (els.logClose && els.logDrawer) {
+  els.logClose.addEventListener("click", () => {
+    els.logDrawer.style.bottom = "-320px";
+  });
 }
 
 if (els.crmEmailList) {
