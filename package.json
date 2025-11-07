@@ -1,0 +1,19 @@
+{
+  "name": "retro-terrain",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "pdfjs-dist": "^4.0.379",
+    "three": "^0.181.0"
+  }
+}

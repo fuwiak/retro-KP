@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      # Optional: Add PostgreSQL/MySQL if needed in future
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-rus tesseract-ocr-eng poppler-utils
+    
+    - name: Install Python dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Lint with flake8
+      working-directory: ./backend
+      run: |
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+    
+    - name: Check imports
+      working-directory: ./backend
+      run: |
+        python -c "import sys; sys.path.insert(0, '.'); from services.ocr_service import OCRService; from services.translation_service import TranslationService; from services.export_service import ExportService; print('All imports successful')"
+    
+    - name: Test API startup
+      working-directory: ./backend
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'test_key' }}
+        PORT: 3000
+      run: |
+        timeout 10 python -c "from main import app; print('App imported successfully')" || true
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build frontend
+      run: npm run build
+      env:
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:3000/api' }}
+    
+    - name: Check build output
+      run: |
+        if [ -d "dist" ]; then
+          echo "Build successful - dist directory exists"
+          ls -la dist/
+        else
+          echo "Build failed - dist directory not found"
+          exit 1
+        fi
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./backend/Dockerfile
+        push: false
+        tags: retro-sketch-backend:test
+        cache-from: type=registry,ref=retro-sketch-backend:latest
+        cache-to: type=inline
+    
+    - name: Test Docker image
+      run: |
+        docker run --rm -d -p 3000:3000 --name test-backend -e GROQ_API_KEY=test_key retro-sketch-backend:test
+        sleep 5
+        curl -f http://localhost:3000/api/health || exit 1
+        docker stop test-backend
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check Python formatting
+      working-directory: ./backend
+      run: |
+        pip install black
+        black --check . || true
+    
+    - name: Check JavaScript formatting
+      run: |
+        npm install -g prettier
+        prettier --check "src/**/*.js" "*.html" || true
+

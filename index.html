@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RETRO ANALYTICS CONSOLE</title>
+
+    <style>
+      :root {
+        --ui-color: rgb(255, 0, 0);
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(circle at 20% 20%, #020202, #000 90%);
+        color: var(--ui-color);
+        font-family: "Share Tech Mono", monospace;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 100vh;
+        scroll-behavior: smooth;
+      }
+      
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      /* Custom scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 12px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: var(--ui-color);
+        border-radius: 6px;
+        border: 2px solid rgba(0, 0, 0, 0.5);
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgb(200, 0, 0);
+      }
+      
+      /* Firefox scrollbar */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--ui-color) rgba(0, 0, 0, 0.5);
+      }
+
+      h1 {
+        text-align: center;
+        margin-top: 0.5rem;
+        text-shadow: 0 0 8px var(--ui-color);
+        letter-spacing: 2px;
+      }
+
+      /* === PDF PREVIEW === */
+      #pdfSection {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 6px;
+        transition: all 0.4s ease;
+      }
+      #pdfPreview {
+        width: 100%;
+        max-width: 800px;
+        height: 600px;
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 10px var(--ui-color);
+        margin-top: 5px;
+        transition: all 0.4s ease, opacity 0.3s;
+        overflow: hidden;
+        position: relative;
+      }
+      #pdfPreview.hidden {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+      }
+
+      #pdfCanvas {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        cursor: default;
+      }
+      #pdfCanvas.crop-mode {
+        cursor: crosshair;
+      }
+      
+      #cropOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      
+      #cropSelection {
+        border: 3px solid var(--ui-color);
+        background: rgba(255, 0, 0, 0.2);
+        box-shadow: 0 0 20px var(--ui-color), inset 0 0 15px rgba(255, 0, 0, 0.4);
+        pointer-events: none;
+        z-index: 1000;
+        min-width: 10px;
+        min-height: 10px;
+        position: absolute;
+      }
+      
+      #polygonCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 1001;
+      }
+      
+      #cropOverlay {
+        z-index: 999;
+      }
+      
+      #cropOverlay.active {
+        display: block !important;
+      }
+      
+      #pdfCanvas {
+        position: relative;
+        z-index: 1;
+      }
+      
+      #croppedPreviewSection {
+        max-width: 800px;
+        margin: 10px auto 0;
+      }
+      
+      #croppedPreviewCanvas {
+        background: rgba(0, 0, 0, 0.9);
+      }
+
+      #togglePdf {
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-family: inherit;
+      }
+      #togglePdf:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+
+      #controls {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 1rem;
+      }
+
+      #controls input,
+      #controls select,
+      #controls button {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 5px 8px;
+        font-family: inherit;
+      }
+
+      #controls button:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+
+      #statusLine {
+        text-align: center;
+        font-size: 0.9rem;
+        text-shadow: 0 0 6px var(--ui-color);
+      }
+
+      #main-panels {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0.5rem;
+      }
+
+      .panel {
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 8px var(--ui-color);
+        padding: 6px;
+        flex: 1 1 45%;
+        min-width: 300px;
+        max-width: 600px;
+        background: rgba(0, 0, 0, 0.85);
+        position: relative;
+      }
+
+      .panel h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .expand {
+        cursor: nwse-resize;
+        font-size: 0.8rem;
+      }
+
+      #wordChart {
+        width: 100%;
+        height: 240px;
+      }
+
+      #commentsList {
+        max-height: 280px;
+        overflow-y: auto;
+        font-size: 0.8rem;
+      }
+
+      /* PROGRESS DRAWER */
+      #progressToggle {
+        position: fixed;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        cursor: pointer;
+        text-shadow: 0 0 4px var(--ui-color);
+        z-index: 120;
+        transition: all 0.3s ease;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+      }
+      #progressToggle:hover {
+        background: var(--ui-color);
+        color: #000;
+        transform: translateY(-50%) scale(1.05);
+      }
+      /* CLOUD FOLDER DRAWER */
+      #cloudFolderToggle {
+        position: fixed;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        cursor: pointer;
+        text-shadow: 0 0 4px var(--ui-color);
+        z-index: 120;
+        transition: all 0.3s ease;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+      }
+      #cloudFolderToggle:hover {
+        background: var(--ui-color);
+        color: #000;
+        transform: translateY(-50%) scale(1.05);
+      }
+      #cloudFolderDrawer {
+        position: fixed;
+        left: -450px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 450px;
+        height: 500px;
+        background: rgba(0, 0, 0, 0.95);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 0.5rem;
+        transition: left 0.4s ease;
+        z-index: 115;
+        display: flex;
+        flex-direction: column;
+      }
+      #cloudFolderDrawer.open {
+        left: 10px;
+      }
+      #cloudFolderDrawer h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        text-align: center;
+        margin-bottom: 5px;
+      }
+      .cloud-folder-item {
+        padding: 5px;
+        margin-bottom: 3px;
+        border-left: 2px solid var(--ui-color);
+        background: rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .cloud-folder-item:hover {
+        background: rgba(255, 0, 0, 0.1);
+        border-left-color: rgb(255, 0, 0);
+      }
+      .cloud-file-item {
+        padding: 5px;
+        margin-bottom: 3px;
+        margin-left: 15px;
+        border-left: 2px solid rgba(255, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .cloud-file-item:hover {
+        background: rgba(255, 0, 0, 0.1);
+      }
+      #progressDrawer {
+        position: fixed;
+        right: -450px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 450px;
+        height: 500px;
+        background: rgba(0, 0, 0, 0.95);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 0.5rem;
+        transition: right 0.4s ease;
+        z-index: 115;
+        display: flex;
+        flex-direction: column;
+      }
+      #progressDrawer.open {
+        right: 10px;
+      }
+
+      #progressDrawer h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        text-align: center;
+        margin-bottom: 5px;
+      }
+      #progressArea {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 0.85rem;
+        line-height: 1.4rem;
+      }
+      
+      /* Progress item styling */
+      .progress-item {
+        padding: 8px;
+        margin-bottom: 8px;
+        border-left: 3px solid var(--ui-color);
+        background: rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
+      }
+      .progress-item.active {
+        background: rgba(255, 0, 0, 0.1);
+        border-left-color: rgb(255, 0, 0);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      .progress-item.completed {
+        border-left-color: rgb(0, 255, 0);
+        opacity: 0.8;
+      }
+      .progress-item.error {
+        border-left-color: rgb(255, 100, 100);
+        background: rgba(255, 0, 0, 0.2);
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+
+      /* LOG DRAWER */
+      #logToggle {
+        position: fixed;
+        bottom: 5px;
+        right: 10px;
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        cursor: pointer;
+        text-shadow: 0 0 4px var(--ui-color);
+        z-index: 120;
+        transition: all 0.3s ease;
+      }
+      #logToggle:hover {
+        background: var(--ui-color);
+        color: #000;
+        transform: scale(1.05);
+      }
+      #logDrawer {
+        position: fixed;
+        right: 10px;
+        bottom: -300px;
+        width: 400px;
+        height: 300px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 0.5rem;
+        transition: bottom 0.4s ease;
+        z-index: 110;
+        display: flex;
+        flex-direction: column;
+      }
+      #logDrawer.open {
+        bottom: 40px;
+      }
+
+      #logDrawer h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        text-align: center;
+        margin-bottom: 5px;
+      }
+      #logArea {
+        flex: 1;
+        overflow-y: auto;
+        font-size: 0.75rem;
+        line-height: 1.2rem;
+      }
+
+      /* STEEL EQUIVALENTS DRAWER */
+      #steelToggle {
+        position: fixed;
+        top: 5px;
+        left: 10px;
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        cursor: pointer;
+        text-shadow: 0 0 4px var(--ui-color);
+        z-index: 120;
+        transition: all 0.3s ease;
+      }
+      #steelToggle:hover {
+        background: var(--ui-color);
+        color: #000;
+        transform: scale(1.05);
+      }
+      #steelDrawer {
+        position: fixed;
+        left: 10px;
+        top: -450px;
+        width: 450px;
+        height: 450px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 0.5rem;
+        transition: top 0.4s ease;
+        z-index: 110;
+        display: flex;
+        flex-direction: column;
+      }
+      #steelDrawer.open {
+        top: 40px;
+      }
+
+      #steelDrawer h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        text-align: center;
+        margin-bottom: 5px;
+      }
+
+      /* TELEGRAM DRAWER */
+      #telegramToggle {
+        position: fixed;
+        bottom: 5px;
+        left: 10px;
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 0.8rem;
+        padding: 3px 8px;
+        cursor: pointer;
+        text-shadow: 0 0 4px var(--ui-color);
+        z-index: 120;
+        transition: all 0.3s ease;
+      }
+      #telegramToggle:hover {
+        background: var(--ui-color);
+        color: #000;
+        transform: scale(1.05);
+      }
+      #telegramDrawer {
+        position: fixed;
+        left: 10px;
+        bottom: -400px;
+        width: 400px;
+        height: 400px;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 0.5rem;
+        transition: bottom 0.4s ease;
+        z-index: 110;
+        display: flex;
+        flex-direction: column;
+      }
+      #telegramDrawer.open {
+        bottom: 40px;
+      }
+
+      #telegramDrawer h2 {
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--ui-color);
+        text-align: center;
+        margin-bottom: 5px;
+      }
+
+
+      /* MODAL COMMENT VIEWER */
+      #modalOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 400;
+        color: var(--ui-color);
+        font-family: "Share Tech Mono", monospace;
+      }
+      #modalOverlay.hidden {
+        display: none;
+      }
+      #modalContentWrapper {
+        width: 70%;
+        max-height: 80%;
+        background: rgba(0, 0, 0, 0.95);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 1rem;
+        overflow-y: auto;
+      }
+      #modalTitle {
+        text-align: center;
+      }
+      #modalData {
+        max-height: 60vh;
+        overflow-y: auto;
+        border-top: 1px solid var(--ui-color);
+        margin-top: 10px;
+        font-size: 0.85rem;
+        line-height: 1.2rem;
+      }
+      #modalContentWrapper button {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 6px 12px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      #modalContentWrapper button:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+      #modalSearch {
+        width: 100%;
+        margin-top: 8px;
+        padding: 4px;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+      }
+      #modalClose {
+        margin-top: 10px;
+        background: var(--ui-color);
+        color: #000;
+        border: none;
+        padding: 6px 12px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+
+      /* SETTINGS OVERLAY */
+      #settingsOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 400;
+        color: var(--ui-color);
+        font-family: "Share Tech Mono", monospace;
+      }
+      #settingsOverlay.hidden {
+        display: none;
+      }
+      #settingsContent {
+        width: 500px;
+        max-height: 80%;
+        background: rgba(0, 0, 0, 0.95);
+        border: 1px solid var(--ui-color);
+        box-shadow: 0 0 12px var(--ui-color);
+        padding: 1rem;
+        overflow-y: auto;
+      }
+      #settingsContent h2 {
+        text-align: center;
+        margin-top: 0;
+        border-bottom: 1px solid var(--ui-color);
+        padding-bottom: 10px;
+      }
+      #settingsContent button {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 6px 12px;
+        font-family: inherit;
+        cursor: pointer;
+        flex: 1;
+      }
+      #settingsContent button:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+      #settingsContent input[type="checkbox"] {
+        accent-color: var(--ui-color);
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>📐 RETRO DRAWING ANALYZER</h1>
+
+    <!-- === PDF PREVIEW SECTION === -->
+    <div id="pdfSection">
+      <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 5px; flex-wrap: wrap;">
+        <button id="togglePdf">📄 Hide Preview</button>
+        <button id="enableCropBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; font-family: inherit;">✂️ Enable Crop</button>
+        <button id="cropModeToggle" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; font-family: inherit; display: none;">📐 Rectangle</button>
+        <button id="clearCropBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; font-family: inherit; display: none;">🗑️ Clear Crop</button>
+        <button id="resetPdfBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 4px 10px; cursor: pointer; font-size: 0.8rem; font-family: inherit;">🔄 Reset PDF</button>
+        <span id="cropStatus" style="font-size: 0.9rem; font-weight: bold; color: var(--ui-color); text-shadow: 0 0 8px var(--ui-color); padding: 5px 10px; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); border-radius: 4px; display: inline-block;"></span>
+      </div>
+      <div id="pdfPreview" style="width: 100%; max-width: 800px; height: 600px; border: 1px solid var(--ui-color); box-shadow: 0 0 10px var(--ui-color); margin-top: 5px; position: relative; overflow: hidden; background: rgba(0,0,0,0.5);">
+        <p id="pdfPreviewPlaceholder" style="opacity: 0.6; text-align: center; padding: 20px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">PDF preview will appear here</p>
+        <canvas id="pdfCanvas" style="display: block; max-width: 100%; max-height: 100%; cursor: crosshair; position: relative; z-index: 1; pointer-events: auto;"></canvas>
+        <canvas id="polygonCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1001;"></canvas>
+        <canvas id="selectionCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1002;"></canvas>
+        <div id="cropOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 999;">
+          <div id="cropSelection" style="position: absolute; border: 2px dashed var(--ui-color); background: rgba(255, 0, 0, 0.1); box-shadow: 0 0 10px var(--ui-color); pointer-events: none; display: none;"></div>
+        </div>
+      </div>
+      <canvas id="croppedCanvas" style="display: none;"></canvas>
+    </div>
+    
+    <!-- CROPPED AREA PREVIEW -->
+    <div id="croppedPreviewSection" style="display: none; margin-top: 10px; border: 1px solid var(--ui-color); padding: 10px; background: rgba(0,0,0,0.8); max-width: 800px; margin-left: auto; margin-right: auto;">
+      <h3 style="margin: 0 0 10px 0; font-size: 0.9rem; border-bottom: 1px solid var(--ui-color); padding-bottom: 5px;">✂️ CROPPED AREA PREVIEW</h3>
+      <div style="display: flex; gap: 10px; align-items: flex-start;">
+        <div style="flex: 1;">
+          <canvas id="croppedPreviewCanvas" style="max-width: 100%; max-height: 400px; border: 1px solid var(--ui-color); background: rgba(0,0,0,0.9);"></canvas>
+        </div>
+        <div style="flex: 1; font-size: 0.8rem;">
+          <div style="margin-bottom: 5px;"><strong>Area:</strong> <span id="croppedAreaSize">-</span></div>
+          <div style="margin-bottom: 5px;"><strong>Points:</strong> <span id="croppedPointsCount">0</span></div>
+          <div style="margin-top: 10px;">
+            <button id="finishPolygonBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px 10px; font-family: inherit; cursor: pointer; margin-right: 5px; font-size: 0.8rem;">✓ Finish Polygon</button>
+            <button id="clearPolygonBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px 10px; font-family: inherit; cursor: pointer; font-size: 0.8rem;">🗑️ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div id="controls">
+      <input id="pdfFileInput" type="file" accept=".pdf" style="display: none;" />
+      <button id="selectPdfBtn">📎 Select PDF</button>
+      <input id="telegramChatId" placeholder="Telegram Chat ID (optional)" size="25" />
+      <input id="colorPicker" type="color" value="#ff0000" />
+      <button id="langToggle">🇬🇧</button>
+      <button id="settingsBtn">⚙️ Settings</button>
+      <button id="processBtn">▶ Process Drawing</button>
+    </div>
+
+    <div id="statusLine">💤 Idle — waiting for input</div>
+
+    <!-- PANELS -->
+    <div id="main-panels">
+      <div class="panel" id="panel-extracted">
+        <h2>EXTRACTED DATA <span class="expand">⤡</span></h2>
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 5px;">
+          <button id="exportBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 3px 8px; font-family: inherit; font-size: 0.75rem; cursor: pointer; margin-left: 5px;">
+            📥 Export
+          </button>
+        </div>
+        <div id="extractedData" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;">
+          <p style="opacity: 0.6; text-align: center; padding: 20px;">Upload and process a PDF drawing to see extracted data</p>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-results">
+        <h2>PROCESSING RESULTS <span class="expand">⤡</span></h2>
+        <div id="resultsList" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"></div>
+      </div>
+    </div>
+
+    <!-- STEEL EQUIVALENTS DRAWER -->
+    <div id="steelToggle">⚙️ STEEL EQUIVALENTS</div>
+    <div id="steelDrawer">
+      <h2>⚙️ STEEL GRADE EQUIVALENTS</h2>
+      <div style="margin-bottom: 10px; display: flex; gap: 5px; align-items: center;">
+        <input id="steelSearch" placeholder="Search steel grade (e.g., 45ХНМФА)" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 3px 5px; font-family: inherit; font-size: 0.75rem; flex: 1;" />
+        <button id="searchSteelBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 3px 8px; font-family: inherit; font-size: 0.75rem; cursor: pointer;">
+          🔍 Search
+        </button>
+      </div>
+      <div id="steelStatus" style="font-size: 0.75rem; color: var(--ui-color); opacity: 0.7; margin-bottom: 5px; text-align: center;"></div>
+      <div id="steelResults" style="flex: 1; overflow-y: auto; font-size: 0.8rem;"></div>
+    </div>
+
+    <!-- CLOUD FOLDER DRAWER -->
+    <div id="cloudFolderToggle">☁️ FOLDERS</div>
+    <div id="cloudFolderDrawer">
+      <h2>☁️ CLOUD FOLDERS</h2>
+      <div style="margin-bottom: 10px;">
+        <input id="cloudFolderUrl" type="text" placeholder="Mail.ru Cloud URL" value="https://cloud.mail.ru/public/ZVeV/Mq5HoaFGX" style="width: 100%; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px; font-family: inherit; font-size: 0.85rem; box-sizing: border-box; margin-bottom: 5px;" />
+        <button id="loadCloudFolderBtn" style="width: 100%; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px 10px; font-family: inherit; font-size: 0.85rem; cursor: pointer;">
+          📥 Load Folder
+        </button>
+      </div>
+      <div id="cloudFolderStatus" style="font-size: 0.75rem; color: var(--ui-color); opacity: 0.7; margin-bottom: 5px; text-align: center;"></div>
+      <div id="cloudFolderContent" style="flex: 1; overflow-y: auto; font-size: 0.8rem; max-height: calc(100vh - 200px);"></div>
+    </div>
+
+    <!-- PROGRESS DRAWER -->
+    <div id="progressToggle">⚡ PROGRESS</div>
+    <div id="progressDrawer">
+      <h2>⚡ PROCESSING STATUS</h2>
+      <div id="progressArea" style="flex: 1; overflow-y: auto; font-size: 0.85rem; line-height: 1.4rem;"></div>
+    </div>
+
+    <!-- LOG DRAWER -->
+    <div id="logToggle">📟 LOGS</div>
+    <div id="logDrawer">
+      <h2>LOG TERMINAL</h2>
+      <div id="logArea"></div>
+    </div>
+
+    <!-- TELEGRAM DRAWER -->
+    <div id="telegramToggle">📱 TELEGRAM</div>
+    <div id="telegramDrawer">
+      <h2>📱 TELEGRAM NOTIFICATIONS</h2>
+      <div style="margin-bottom: 10px;">
+        <input id="telegramBotToken" placeholder="Bot Token" style="width: 100%; background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px; font-family: inherit; font-size: 0.85rem; margin-bottom: 5px;" />
+        <button id="testTelegramBtn" style="background: rgba(0, 0, 0, 0.8); border: 1px solid var(--ui-color); color: var(--ui-color); padding: 5px 10px; font-family: inherit; font-size: 0.85rem; cursor: pointer; width: 100%;">
+          📤 Test Connection
+        </button>
+      </div>
+      <div id="telegramStatus" style="font-size: 0.75rem; color: var(--ui-color); opacity: 0.7; margin-bottom: 5px; text-align: center;"></div>
+      <div id="telegramHistory" style="flex: 1; overflow-y: auto; font-size: 0.8rem;"></div>
+    </div>
+
+    <!-- MODAL DETAIL VIEWER -->
+    <div id="modalOverlay" class="hidden">
+      <div id="modalContentWrapper">
+        <h2 id="modalTitle">
+          Details: <span id="modalTitleText"></span>
+        </h2>
+        <input id="modalSearch" placeholder="🔍 Filter..." />
+        <div id="modalData"></div>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button id="modalApprove" style="flex: 1;">✅ Approve</button>
+          <button id="modalReject" style="flex: 1;">❌ Reject</button>
+          <button id="modalClose" style="flex: 1;">✖ Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS OVERLAY -->
+    <div id="settingsOverlay" class="hidden">
+      <div id="settingsContent">
+        <h2>⚙️ SETTINGS</h2>
+        <div style="margin: 10px 0;">
+          <label style="display: block; margin-bottom: 5px;">OCR Language:</label>
+          <select id="ocrLanguage" style="width: 100%; background: rgba(0,0,0,0.7); border: 1px solid var(--ui-color); color: var(--ui-color); font-family: inherit; padding: 4px;">
+            <option value="rus+eng">Russian + English</option>
+            <option value="rus">Russian only</option>
+            <option value="eng">English only</option>
+          </select>
+        </div>
+        <div style="margin: 10px 0;">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="humToggle" checked />
+            <span>Enable CRT hum sound</span>
+          </label>
+        </div>
+        <div style="margin: 10px 0;">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="autoTranslate" checked />
+            <span>Auto-translate to English</span>
+          </label>
+          </div>
+        <div style="margin: 10px 0;">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="findSteelEquivalents" checked />
+            <span>Find steel grade equivalents</span>
+          </label>
+        </div>
+        <div style="margin: 10px 0;">
+          <label style="display: block; margin-bottom: 5px;">Export Format:</label>
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="exportDocx" checked />
+              <span>DOCX</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="exportXlsx" checked />
+              <span>XLSX</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="exportPdf" checked />
+              <span>PDF</span>
+            </label>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button id="saveSettings">💾 Save</button>
+          <button id="cancelSettings">❌ Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+    <script>
+      // Make PDF.js available globally for PDF.js 4.x
+      // PDF.js 4.x exports differently than 3.x
+      (function() {
+        // Try to find PDF.js in various locations
+        if (typeof pdfjsLib !== 'undefined') {
+          window.pdfjsLib = pdfjsLib;
+          console.log('PDF.js loaded: pdfjsLib variable');
+        } else if (typeof pdfjs !== 'undefined') {
+          window.pdfjsLib = pdfjs;
+          console.log('PDF.js loaded: pdfjs variable');
+        } else if (typeof window.pdfjsLib !== 'undefined') {
+          console.log('PDF.js loaded: window.pdfjsLib already exists');
+        } else {
+          // Try to access from global scope
+          try {
+            // PDF.js 4.x might export as a module
+            if (typeof module !== 'undefined' && module.exports) {
+              const pdfjs = require('pdfjs-dist');
+              window.pdfjsLib = pdfjs;
+              console.log('PDF.js loaded: via require');
+            }
+          } catch (e) {
+            console.warn('Could not load PDF.js via require:', e);
+          }
+        }
+        
+        // Verify PDF.js is available
+        if (window.pdfjsLib && typeof window.pdfjsLib.getDocument === 'function') {
+          console.log('PDF.js verified: getDocument function available');
+          // Configure worker for PDF.js 4.x
+          if (window.pdfjsLib.GlobalWorkerOptions) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+            console.log('PDF.js worker configured');
+          }
+        } else {
+          console.error('PDF.js not properly loaded. Available:', {
+            hasPdfjsLib: typeof window.pdfjsLib !== 'undefined',
+            type: typeof window.pdfjsLib,
+            keys: window.pdfjsLib ? Object.keys(window.pdfjsLib).slice(0, 20) : null
+          });
+        }
+      })();
+    </script>
+    <script type="module" src="/src/gui.js"></script>
+  </body>
+</html>
