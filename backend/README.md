@@ -32,10 +32,9 @@ Download and install from: https://github.com/UB-Mannheim/tesseract/wiki
 ```bash
 cd backend
 pip install -r requirements.txt
-
-# Install Russian spaCy model for email analysis
-python -m spacy download ru_core_news_sm
 ```
+
+> В составе зависимостей уже присутствует модель `ru_core_news_sm`. При необходимости обновления можно выполнить `python -m spacy download ru_core_news_sm --direct`.
 
 ### 3. Configure Environment
 

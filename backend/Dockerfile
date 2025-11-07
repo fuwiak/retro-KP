@@ -19,11 +19,8 @@ RUN apt-get update && apt-get install -y \
 # Note: Railway uses root as build context, so we need backend/ prefix
 COPY backend/requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies (spaCy model included via requirements)
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Russian spaCy model required for NLP heuristics
-RUN python -m spacy download ru_core_news_sm
 
 # Install Node.js 20 for frontend build (Vite 7 requires Node 20.19+ or 22.12+)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
