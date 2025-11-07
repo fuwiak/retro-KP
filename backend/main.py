@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import asyncio
 import os
 import time
@@ -21,6 +21,13 @@ from services.translation_service import TranslationService
 from services.export_service import ExportService
 from services.cloud_service import CloudService
 from services.email_service import email_analysis_service
+from services.crm_service import (
+    crm_service,
+    ContactPayload,
+    InteractionPayload,
+    DocumentChecklist,
+    CRMConfigurationError,
+)
 from services.logger import api_logger, log_api_request, log_api_response
 
 # Load environment variables
@@ -145,6 +152,90 @@ async def generate_email_proposal(request: EmailProposalRequest):
     except Exception as exc:
         api_logger.error(f"Proposal generation failed: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ========== CRM AUTOMATION ENDPOINTS ==========
+
+
+class CRMContact(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+
+
+class CRMDocumentChecklistModel(BaseModel):
+    proposal_sent: bool = False
+    invoice_sent: bool = False
+    contract_signed: bool = False
+    closing_documents_ready: bool = False
+
+
+class CRMInteractionRequest(BaseModel):
+    channel: str
+    subject: str
+    message: str
+    contact: CRMContact
+    source_id: Optional[str] = None
+    direction: str = "incoming"
+    metadata: Optional[Dict[str, Any]] = None
+    documents: Optional[CRMDocumentChecklistModel] = None
+    responsible_user_id: Optional[int] = None
+    follow_up_hours: int = 4
+
+
+@app.post("/api/crm/interactions")
+async def register_crm_interaction(request: CRMInteractionRequest):
+    """Register customer interaction and automate amoCRM routines."""
+
+    try:
+        result = await crm_service.register_interaction(
+            InteractionPayload(
+                channel=request.channel,
+                subject=request.subject,
+                message=request.message,
+                contact=ContactPayload(**request.contact.model_dump()),
+                source_id=request.source_id,
+                direction=request.direction,
+                metadata=request.metadata,
+                documents=(
+                    DocumentChecklist(**request.documents.model_dump())
+                    if request.documents
+                    else None
+                ),
+                responsible_user_id=request.responsible_user_id,
+                follow_up_hours=request.follow_up_hours,
+            )
+        )
+        return result
+    except CRMConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        api_logger.error(f"CRM interaction failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to register interaction")
+
+
+class CRMDocumentControlRequest(BaseModel):
+    documents: CRMDocumentChecklistModel
+    responsible_user_id: Optional[int] = None
+
+
+@app.post("/api/crm/leads/{lead_id}/documents")
+async def ensure_lead_documents(lead_id: int, request: CRMDocumentControlRequest):
+    """Ensure document delivery tasks exist for the lead."""
+
+    try:
+        result = await crm_service.ensure_document_completeness(
+            lead_id,
+            DocumentChecklist(**request.documents.model_dump()),
+            responsible_user_id=request.responsible_user_id,
+        )
+        return result
+    except CRMConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        api_logger.error(f"CRM document control failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to ensure document tasks")
 
 
 # ========== OCR ENDPOINTS ==========

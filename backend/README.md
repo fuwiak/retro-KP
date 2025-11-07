@@ -10,6 +10,7 @@ FastAPI backend for PDF drawing analysis with OCR, translation, and document exp
   - Automatic fallback if primary method fails
 - **Translation**: Translate technical text (Russian to English) with glossary support
 - **Document Export**: Generate DOCX, XLSX, and PDF files with analysis results
+- **Stage 1 CRM Automation**: Unified handling of inbound interactions, automatic contact/lead creation in amoCRM, task scheduling, and document checklist control
 
 ## Setup
 
@@ -68,7 +69,26 @@ IMAP_PASSWORD=your_password
 IMAP_FOLDER=INBOX
 ```
 
-### 5. Run the Server
+### 5. Configure amoCRM Integration (Stage 1 CRM Core)
+
+Fill in amoCRM OAuth credentials and pipeline settings in `.env`:
+
+```
+AMO_BASE_URL=https://yourcompany.amocrm.ru
+AMO_CLIENT_ID=...
+AMO_CLIENT_SECRET=...
+AMO_REDIRECT_URI=https://yourapp.example.com/oauth/callback
+AMO_ACCESS_TOKEN=...
+AMO_REFRESH_TOKEN=...
+AMO_PIPELINE_ID=...
+AMO_LEAD_STATUS_ID=...
+AMO_RESPONSIBLE_USER_ID=...
+AMO_TOKEN_FILE=amo_tokens.json
+```
+
+The service persists refreshed tokens to `AMO_TOKEN_FILE`. Mount this file to persistent storage in production.
+
+### 6. Run the Server
 
 ```bash
 python main.py
@@ -104,6 +124,15 @@ API documentation (Swagger UI): `http://localhost:3000/docs`
 - `POST /api/export/xlsx` - Export to XLSX
 - `POST /api/export/pdf` - Export PDF with overlay
 
+### Email Intelligence
+- `GET /api/emails` - List recent IMAP messages (optional `relevant_only` filter)
+- `POST /api/emails/classify` - Groq-based classification of a single message
+- `POST /api/emails/proposal` - Generate plain-text commercial proposal
+
+### CRM Automation (Stage 1)
+- `POST /api/crm/interactions` - Register inbound interaction from email/WhatsApp/phone and auto-create contact, lead, note, and tasks
+- `POST /api/crm/leads/{lead_id}/documents` - Ensure document delivery tasks (proposal, invoice, contract, closing docs) exist for the lead
+
 ## Development
 
 ### Project Structure
@@ -112,9 +141,11 @@ API documentation (Swagger UI): `http://localhost:3000/docs`
 backend/
 ├── main.py                 # FastAPI application
 ├── services/
-│   ├── ocr_service.py     # OCR processing with Groq AI
+│   ├── ocr_service.py          # OCR processing with Groq AI
 │   ├── translation_service.py  # Translation with glossary
-│   └── export_service.py   # Document export (DOCX, XLSX, PDF)
+│   ├── export_service.py       # Document export (DOCX, XLSX, PDF)
+│   ├── email_service.py        # IMAP inbox intelligence + KP generation
+│   └── crm_service.py          # amoCRM Stage 1 automation core
 ├── requirements.txt        # Python dependencies
 ├── .env.example          # Environment variables template
 └── README.md             # This file

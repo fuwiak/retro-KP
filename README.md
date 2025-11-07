@@ -5,6 +5,8 @@
 
 Aplikacja do analizy PDF-ów z rysunkami technicznymi z OCR, tłumaczeniem i eksportem.
 
+📌 **Etap 1 – CRM-koordynacja i automatyzacja**: backend potrafi przejąć rutynowe obowiązki managera, rejestrując interakcje (email, WhatsApp, telefon) w amoCRM, tworząc zadania i pilnując wysyłki dokumentów.
+
 ## 🚀 Szybki Start
 
 ### Lokalne uruchomienie
@@ -21,9 +23,11 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python -m spacy download ru_core_news_sm
 
 # Skopiuj env.example do .env i uzupełnij GROQ_API_KEY
 cp env.example .env
+# Dodaj konfigurację IMAP oraz amoCRM (Etap 1)
 
 python main.py
 ```
@@ -48,6 +52,7 @@ docker-compose up --build
 - **Eksport**: Generowanie dokumentów DOCX, XLSX, PDF
 - **Selekcja obszarów**: Zaznaczanie prostokątne i wielokątne w PDF
 - **Ekwiwalenty stali**: Wyszukiwanie odpowiedników w standardach ASTM, ISO, GB/T
+- **CRM Stage 1**: Jednolity przepływ zgłoszeń, automatyczne zakładanie kontaktów i sprzedaży w amoCRM, generowanie zadań (follow-up, KPI), kontrola wysyłki KP/szkiców/szablonów dokumentów
 
 ## 🐳 Docker
 
@@ -83,7 +88,7 @@ Zobacz [DEPLOY.md](./DEPLOY.md) dla szczegółowych instrukcji.
 ```
 retro-sketch/
 ├── backend/          # FastAPI backend
-│   ├── services/     # Serwisy (OCR, translation, export)
+│   ├── services/     # Serwisy (OCR, translation, export, CRM, e-mail)
 │   ├── logs/         # Logi aplikacji
 │   └── Dockerfile    # Docker image
 ├── src/              # Frontend (Vite + Vanilla JS)
@@ -99,6 +104,25 @@ GROQ_API_KEY=your_groq_api_key
 HOST=0.0.0.0
 PORT=3000
 ENVIRONMENT=development
+
+# IMAP (analiza poczty)
+IMAP_SERVER=imap.example.com
+IMAP_PORT=993
+IMAP_USERNAME=support@example.com
+IMAP_PASSWORD=super_secret
+IMAP_FOLDER=INBOX
+
+# amoCRM (Etap 1 CRM)
+AMO_BASE_URL=https://yourcompany.amocrm.ru
+AMO_CLIENT_ID=...
+AMO_CLIENT_SECRET=...
+AMO_REDIRECT_URI=https://yourapp.example.com/oauth/callback
+AMO_ACCESS_TOKEN=...
+AMO_REFRESH_TOKEN=...
+AMO_PIPELINE_ID=...
+AMO_LEAD_STATUS_ID=...
+AMO_RESPONSIBLE_USER_ID=...
+AMO_TOKEN_FILE=amo_tokens.json
 ```
 
 ### Frontend
@@ -119,6 +143,7 @@ Logi zapisywane w `backend/logs/`:
 - Node.js 18+
 - Tesseract OCR (dla klasycznego OCR)
 - Groq API key (dla LLM OCR)
+- Dostęp do skrzynki IMAP oraz poświadczenia amoCRM (client id, secret, tokens)
 
 ## 📚 Dokumentacja API
 
