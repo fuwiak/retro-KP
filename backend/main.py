@@ -1,6 +1,6 @@
 """
-FastAPI Backend for Retro Drawing Analyzer
-Handles OCR, translation, and document export
+FastAPI backend for CRM & 1C Integration Hub.
+Coordinates OCR, translation, CRM automation, and document workflows.
 """
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
@@ -8,8 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
+from datetime import date, datetime
 import asyncio
 import os
 import time
@@ -21,6 +22,8 @@ from services.translation_service import TranslationService
 from services.export_service import ExportService
 from services.cloud_service import CloudService
 from services.email_service import email_analysis_service
+from services.logger import api_logger, log_api_request, log_api_response
+from services.onec_service import onec_service
 from services.crm_service import (
     crm_service,
     ContactPayload,
@@ -28,15 +31,14 @@ from services.crm_service import (
     DocumentChecklist,
     CRMConfigurationError,
 )
-from services.logger import api_logger, log_api_request, log_api_response
 
 # Load environment variables
 load_dotenv()
 
 app = FastAPI(
-    title="Retro Drawing Analyzer",
-    description="PDF drawing analysis with OCR, translation, and export",
-    version="1.0.0"
+    title="CRM & 1C Integration Hub",
+    description="Automated inbox triage, CRM workflows, and 1C document exchange",
+    version="1.1.0"
 )
 
 # CORS middleware
@@ -236,6 +238,154 @@ async def ensure_lead_documents(lead_id: int, request: CRMDocumentControlRequest
     except Exception as exc:
         api_logger.error(f"CRM document control failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to ensure document tasks")
+
+
+class OneCInvoiceItem(BaseModel):
+    sku: Optional[str] = None
+    description: str
+    quantity: float = Field(gt=0)
+    unit: Optional[str] = None
+    price: float = Field(gt=0)
+    vat_rate: Optional[float] = None
+
+
+class OneCInvoiceRequest(BaseModel):
+    lead_id: int
+    crm_contact_id: Optional[int] = None
+    customer_name: str
+    customer_bin: Optional[str] = None
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+    due_date: Optional[date] = None
+    currency: str = "KZT"
+    items: List[OneCInvoiceItem]
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class OneCFulfillmentRequest(BaseModel):
+    lead_id: int
+    crm_contact_id: Optional[int] = None
+    customer_name: str
+    customer_bin: Optional[str] = None
+    delivery_address: Optional[str] = None
+    documents: Dict[str, Any] = Field(default_factory=dict)
+    items: List[OneCInvoiceItem]
+
+
+class OneCPaymentNotification(BaseModel):
+    lead_id: int
+    invoice_number: str
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    payer_name: Optional[str] = None
+    comment: Optional[str] = None
+
+
+# ========== 1C INTEGRATION ENDPOINTS ==========
+
+
+def _cleanup_payload(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {key: value for key, value in data.items() if value is not None}
+
+
+@app.post("/api/integrations/1c/invoices")
+async def create_invoice_via_onec(request: OneCInvoiceRequest):
+    try:
+        payload = {
+            "leadId": request.lead_id,
+            "crmContactId": request.crm_contact_id,
+            "customer": _cleanup_payload(
+                {
+                    "name": request.customer_name,
+                    "bin": request.customer_bin,
+                    "email": request.customer_email,
+                    "phone": request.customer_phone,
+                }
+            ),
+            "currency": request.currency,
+            "dueDate": request.due_date.isoformat() if request.due_date else None,
+            "items": [item.model_dump(exclude_none=True) for item in request.items],
+            "metadata": request.metadata,
+        }
+
+        result = await onec_service.create_invoice(_cleanup_payload(payload))
+        invoice_number = result.get("invoiceNumber") or result.get("number")
+        if invoice_number:
+            await crm_service.record_generated_document(
+                lead_id=request.lead_id,
+                document_type="Счёт",
+                document_number=str(invoice_number),
+                extra={"Источник": "1C", "Валюта": request.currency},
+            )
+        return {"invoice": result}
+    except Exception as exc:
+        api_logger.error(f"1C invoice generation failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Invoice creation failed: {exc}")
+
+
+@app.post("/api/integrations/1c/fulfillment")
+async def create_fulfillment_via_onec(request: OneCFulfillmentRequest):
+    try:
+        payload = {
+            "leadId": request.lead_id,
+            "crmContactId": request.crm_contact_id,
+            "customer": _cleanup_payload(
+                {
+                    "name": request.customer_name,
+                    "bin": request.customer_bin,
+                }
+            ),
+            "deliveryAddress": request.delivery_address,
+            "documents": request.documents,
+            "items": [item.model_dump(exclude_none=True) for item in request.items],
+        }
+
+        result = await onec_service.create_fulfillment_documents(_cleanup_payload(payload))
+
+        waybill_number = result.get("waybillNumber")
+        act_number = result.get("actNumber")
+
+        if waybill_number:
+            await crm_service.record_generated_document(
+                lead_id=request.lead_id,
+                document_type="Накладная",
+                document_number=str(waybill_number),
+            )
+        if act_number:
+            await crm_service.record_generated_document(
+                lead_id=request.lead_id,
+                document_type="Акт",
+                document_number=str(act_number),
+            )
+
+        return {"documents": result}
+    except Exception as exc:
+        api_logger.error(f"1C fulfillment generation failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Fulfillment creation failed: {exc}")
+
+
+@app.post("/api/integrations/1c/payment-notification")
+async def onec_payment_notification(notification: OneCPaymentNotification):
+    try:
+        await crm_service.record_payment_notification(
+            lead_id=notification.lead_id,
+            invoice_number=notification.invoice_number,
+            amount=notification.amount,
+            currency=notification.currency,
+            payer=notification.payer_name,
+        )
+
+        details = {
+            "invoice": notification.invoice_number,
+            "amount": notification.amount,
+            "currency": notification.currency,
+            "paid_at": notification.paid_at.isoformat() if notification.paid_at else None,
+        }
+        return {"status": "ok", "details": _cleanup_payload(details)}
+    except Exception as exc:
+        api_logger.error(f"Processing payment notification failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to process payment notification")
 
 
 # ========== OCR ENDPOINTS ==========

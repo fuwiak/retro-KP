@@ -1,16 +1,14 @@
-# Retro Drawing Analyzer - Backend API
+# CRM & 1C Integration Hub — Backend API
 
-FastAPI backend for PDF drawing analysis with OCR, translation, and document export.
+FastAPI backend for CRM inbox automation, amoCRM workflows, 1С документооборота и технического OCR.
 
 ## Features
 
-- **Intelligent OCR Processing**: AI agent evaluates file complexity and estimated processing time, then automatically selects optimal method:
-  - **Groq LLM**: High-quality OCR for complex documents, multiple languages, technical drawings
-  - **Tesseract OCR**: Fast processing for large files, many pages, simple documents
-  - Automatic fallback if primary method fails
-- **Translation**: Translate technical text (Russian to English) with glossary support
-- **Document Export**: Generate DOCX, XLSX, and PDF files with analysis results
-- **Stage 1 CRM Automation**: Unified handling of inbound interactions, automatic contact/lead creation in amoCRM, task scheduling, and document checklist control
+- **Inbox AI**: Groq основанный анализ писем, фильтр спама, генерация коммерческих предложений
+- **CRM Automation**: Создание контактов/сделок в amoCRM, постановка задач и чек-листы документов
+- **1С Bridge**: REST API для создания счёта, накладной и акта, а также webhook оплат из 1С
+- **Intelligent OCR**: Автовыбор LLM/Tesseract для технической документации
+- **Translation & Export**: Перевод текстов и экспорт в DOCX, XLSX, PDF
 
 ## Setup
 
@@ -69,9 +67,7 @@ IMAP_PASSWORD=your_password
 IMAP_FOLDER=INBOX
 ```
 
-### 5. Configure amoCRM Integration (Stage 1 CRM Core)
-
-Fill in amoCRM OAuth credentials and pipeline settings in `.env`:
+### 5. Configure amoCRM & 1C integration
 
 ```
 AMO_BASE_URL=https://yourcompany.amocrm.ru
@@ -83,10 +79,12 @@ AMO_REFRESH_TOKEN=...
 AMO_PIPELINE_ID=...
 AMO_LEAD_STATUS_ID=...
 AMO_RESPONSIBLE_USER_ID=...
-AMO_TOKEN_FILE=amo_tokens.json
+ONEC_BASE_URL=https://onec.example.com/api
+ONEC_API_KEY=...
+ONEC_TIMEOUT_SECONDS=15
+ONEC_INVOICE_ENDPOINT=/documents/invoice
+ONEC_FULFILLMENT_ENDPOINT=/documents/fulfillment
 ```
-
-The service persists refreshed tokens to `AMO_TOKEN_FILE`. Mount this file to persistent storage in production.
 
 ### 6. Run the Server
 
@@ -113,25 +111,25 @@ API documentation (Swagger UI): `http://localhost:3000/docs`
 
 ### OCR
 - `POST /api/ocr/process` - Process PDF/image with OCR
-  - Form data: `file` (PDF/image), `languages` (e.g., "rus+eng")
+  - Form data: `file` (PDF/image), `languages` (например, "rus+eng")
 
 ### Translation
 - `POST /api/translate` - Translate text
-  - JSON body: `{"text": "...", "from_lang": "ru", "to_lang": "en"}`
-
-### Export
-- `POST /api/export/docx` - Export to DOCX
-- `POST /api/export/xlsx` - Export to XLSX
-- `POST /api/export/pdf` - Export PDF with overlay
+- `POST /api/export/docx|xlsx|pdf` - Export data with overlays
 
 ### Email Intelligence
-- `GET /api/emails` - List recent IMAP messages (optional `relevant_only` filter)
-- `POST /api/emails/classify` - Groq-based classification of a single message
+- `GET /api/emails` - List recent IMAP messages
+- `POST /api/emails/classify` - Groq-based classification of a letter
 - `POST /api/emails/proposal` - Generate plain-text commercial proposal
 
-### CRM Automation (Stage 1)
-- `POST /api/crm/interactions` - Register inbound interaction from email/WhatsApp/phone and auto-create contact, lead, note, and tasks
-- `POST /api/crm/leads/{lead_id}/documents` - Ensure document delivery tasks (proposal, invoice, contract, closing docs) exist for the lead
+### CRM Automation
+- `POST /api/crm/interactions` - Register inbound interaction and automate amoCRM routines
+- `POST /api/crm/leads/{lead_id}/documents` - Manage document checklist tasks
+
+### 1C Integration
+- `POST /api/integrations/1c/invoices` - Создание счёта в 1С и возврат PDF + номера
+- `POST /api/integrations/1c/fulfillment` - Создание накладной и акта (PDF + номера)
+- `POST /api/integrations/1c/payment-notification` - Webhook от 1С с подтверждением оплаты
 
 ## Development
 

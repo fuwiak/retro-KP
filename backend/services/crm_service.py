@@ -299,6 +299,58 @@ class CRMService:
 
         return response.get("_embedded", {}).get("tasks", [])
 
+    async def add_lead_note(self, lead_id: int, title: str, details: str | None = None) -> None:
+        text = title.strip()
+        if details:
+            text = f"{text}\n---\n{details.strip()}"
+
+        note_payload = [
+            {
+                "note_type": "common",
+                "params": {"text": text},
+            }
+        ]
+
+        await self._request("POST", f"/api/v4/leads/{lead_id}/notes", json=note_payload)
+
+    async def record_generated_document(
+        self,
+        lead_id: int,
+        document_type: str,
+        document_number: str,
+        extra: Dict[str, Any] | None = None,
+    ) -> None:
+        lines = [f"В 1С создан документ: {document_type} №{document_number}"]
+        if extra:
+            for key, value in extra.items():
+                lines.append(f"{key}: {value}")
+
+        await self.add_lead_note(
+            lead_id,
+            title="Документы из 1С",
+            details="\n".join(lines),
+        )
+
+    async def record_payment_notification(
+        self,
+        lead_id: int,
+        invoice_number: str,
+        amount: float | None = None,
+        currency: str | None = None,
+        payer: str | None = None,
+    ) -> None:
+        parts = [f"Оплата по счёту №{invoice_number} получена"]
+        if amount is not None:
+            parts.append(f"Сумма: {amount:.2f} {currency or ''}".strip())
+        if payer:
+            parts.append(f"Плательщик: {payer}")
+
+        await self.add_lead_note(
+            lead_id,
+            title="Поступление оплаты",
+            details="\n".join(parts),
+        )
+
     # ------------------------------------------------------------------
     # Contact helpers
     # ------------------------------------------------------------------

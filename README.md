@@ -1,11 +1,11 @@
-# Retro Drawing Analyzer
+# CRM & 1C Integration Hub
 
 [![CI](https://github.com/YOUR_USERNAME/retro-sketch/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/retro-sketch/actions)
 [![Security Scan](https://github.com/YOUR_USERNAME/retro-sketch/workflows/Security%20Scan/badge.svg)](https://github.com/YOUR_USERNAME/retro-sketch/actions)
 
-Aplikacja do analizy PDF-ów z rysunkami technicznymi z OCR, tłumaczeniem i eksportem.
+Платформа автоматизации CRM-процессов с интеграциями почты, amoCRM и 1С. Бот обрабатывает входящие обращения, генерирует КП, синхронизирует документы (счёт, накладная, акт) и уведомляет менеджера об оплатах.
 
-📌 **Etap 1 – CRM-koordynacja i automatyzacja**: backend potrafi przejąć rutynowe obowiązki managera, rejestrując interakcje (email, WhatsApp, telefon) w amoCRM, tworząc zadania i pilnując wysyłki dokumentów.
+📌 **Этап 1 — CRM-координация и документооборот с 1С**: система агрегирует email/WhatsApp/телефон, ведёт сделки в amoCRM, генерирует КП и связывает CRM с 1С для счетов, накладных и актов.
 
 ## 🚀 Szybki Start
 
@@ -29,6 +29,8 @@ python -m spacy download ru_core_news_sm
 cp env.example .env
 # Dodaj konfigurację IMAP oraz amoCRM (Etap 1)
 
+# Для интеграции с 1С укажите ONEC_* параметры
+
 python main.py
 ```
 
@@ -47,12 +49,11 @@ docker-compose up --build
 
 ## 📋 Funkcje
 
-- **Inteligentny OCR**: AI agent wybiera optymalną metodę (Groq LLM lub Tesseract)
-- **Tłumaczenie**: Automatyczne tłumaczenie tekstu technicznego (RU → EN)
-- **Eksport**: Generowanie dokumentów DOCX, XLSX, PDF
-- **Selekcja obszarów**: Zaznaczanie prostokątne i wielokątne w PDF
-- **Ekwiwalenty stali**: Wyszukiwanie odpowiedników w standardach ASTM, ISO, GB/T
-- **CRM Stage 1**: Jednolity przepływ zgłoszeń, automatyczne zakładanie kontaktów i sprzedaży w amoCRM, generowanie zadań (follow-up, KPI), kontrola wysyłki KP/szkiców/szablonów dokumentów
+- **Inbox AI**: Groq LLM фильтрует входящие письма, формирует КП в один клик
+- **Интеграция amoCRM**: Создание контактов/сделок, напоминания, чек-листы документов
+- **Документооборот 1С**: REST API для запроса счетов, накладных и актов + webhook оплаты от 1С
+- **OCR + Перевод**: LLM/Tesseract для технических PDF, авто-перевод RU→EN
+- **Экспорт отчётов**: DOCX, XLSX и PDF с оверлеями
 
 ## 🐳 Docker
 
@@ -88,7 +89,7 @@ Zobacz [DEPLOY.md](./DEPLOY.md) dla szczegółowych instrukcji.
 ```
 retro-sketch/
 ├── backend/          # FastAPI backend
-│   ├── services/     # Serwisy (OCR, translation, export, CRM, e-mail)
+│   ├── services/     # OCR, перевод, CRM, 1С, email-интеграции
 │   ├── logs/         # Logi aplikacji
 │   └── Dockerfile    # Docker image
 ├── src/              # Frontend (Vite + Vanilla JS)
@@ -123,6 +124,13 @@ AMO_PIPELINE_ID=...
 AMO_LEAD_STATUS_ID=...
 AMO_RESPONSIBLE_USER_ID=...
 AMO_TOKEN_FILE=amo_tokens.json
+
+# 1C API
+ONEC_BASE_URL=https://onec.example.com/api
+ONEC_API_KEY=...
+ONEC_TIMEOUT_SECONDS=15
+ONEC_INVOICE_ENDPOINT=/documents/invoice
+ONEC_FULFILLMENT_ENDPOINT=/documents/fulfillment
 ```
 
 ### Frontend
@@ -143,7 +151,7 @@ Logi zapisywane w `backend/logs/`:
 - Node.js 18+
 - Tesseract OCR (dla klasycznego OCR)
 - Groq API key (dla LLM OCR)
-- Dostęp do skrzynki IMAP oraz poświadczenia amoCRM (client id, secret, tokens)
+- Dostęp do skrzynки IMAP, poświadczenia amoCRM oraz REST API 1С
 
 ## 📚 Dokumentacja API
 

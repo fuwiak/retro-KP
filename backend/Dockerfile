@@ -22,6 +22,9 @@ COPY backend/requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Russian spaCy model required for NLP heuristics
+RUN python -m spacy download ru_core_news_sm
+
 # Install Node.js 20 for frontend build (Vite 7 requires Node 20.19+ or 22.12+)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
