@@ -204,6 +204,164 @@
         position: relative;
       }
 
+      /* CRM AUTOPILOT */
+      #crmAutomationSection {
+        max-width: 1220px;
+        margin: 12px auto;
+      }
+      .crm-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 0.75rem;
+      }
+      .crm-controls button,
+      .crm-controls input,
+      .crm-controls select {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 0.75rem;
+      }
+      .crm-controls button:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+      .crm-controls label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      #crmStatus {
+        min-width: 160px;
+        font-size: 0.75rem;
+        text-shadow: 0 0 6px var(--ui-color);
+      }
+      .crm-layout {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .crm-list {
+        flex: 1 1 260px;
+        max-height: 420px;
+        overflow-y: auto;
+        border: 1px solid var(--ui-color);
+        background: rgba(0, 0, 0, 0.6);
+        padding: 6px;
+      }
+      .crm-email-item {
+        padding: 6px;
+        margin-bottom: 6px;
+        border-left: 2px solid transparent;
+        background: rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .crm-email-item:hover {
+        border-left-color: var(--ui-color);
+        background: rgba(255, 0, 0, 0.12);
+      }
+      .crm-email-item.active {
+        border-left-color: rgb(0, 255, 128);
+        background: rgba(0, 0, 0, 0.75);
+      }
+      .crm-email-item.processed {
+        border-left-color: rgb(0, 200, 255);
+        background: rgba(0, 0, 0, 0.65);
+      }
+      .crm-email-subject {
+        font-size: 0.82rem;
+        font-weight: bold;
+      }
+      .crm-email-meta {
+        font-size: 0.7rem;
+        opacity: 0.75;
+      }
+      .crm-email-tag {
+        font-size: 0.65rem;
+        margin-top: 2px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.8;
+      }
+      .crm-detail {
+        flex: 2 1 420px;
+        max-width: 720px;
+        border: 1px solid var(--ui-color);
+        background: rgba(0, 0, 0, 0.55);
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .crm-detail textarea,
+      .crm-detail input,
+      .crm-detail select {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        font-family: inherit;
+        font-size: 0.78rem;
+        padding: 4px 6px;
+      }
+      #crmEmailBody {
+        height: 160px;
+        resize: vertical;
+      }
+      #crmProposalText {
+        height: 140px;
+        resize: vertical;
+      }
+      .crm-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .crm-actions button,
+      #crmSendToCrm {
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid var(--ui-color);
+        color: var(--ui-color);
+        padding: 4px 10px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.75rem;
+      }
+      .crm-actions button:hover,
+      #crmSendToCrm:hover {
+        background: var(--ui-color);
+        color: #000;
+      }
+      .crm-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 6px;
+      }
+      .crm-checklist {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 0.75rem;
+      }
+      .crm-checklist label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      #crmClassification {
+        font-size: 0.75rem;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px dashed var(--ui-color);
+        padding: 6px;
+        min-height: 60px;
+        white-space: pre-wrap;
+      }
+
       .panel h2 {
         font-size: 0.9rem;
         border-bottom: 1px solid var(--ui-color);
@@ -714,6 +872,59 @@
       <div class="panel" id="panel-results">
         <h2>PROCESSING RESULTS <span class="expand">⤡</span></h2>
         <div id="resultsList" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;"></div>
+      </div>
+    </div>
+
+    <!-- CRM AUTOMATION PANEL -->
+    <div class="panel" id="crmAutomationSection">
+      <h2>🤖 CRM AUTO PILOT <span class="expand">⤡</span></h2>
+      <div class="crm-controls">
+        <button id="crmRefreshBtn">🔄 Обновить письма</button>
+        <label><input type="checkbox" id="crmRelevantOnly" checked /> Только коммерческие</label>
+        <label>Limit
+          <input id="crmEmailLimit" type="number" min="5" max="50" step="5" value="20" />
+        </label>
+        <select id="crmChannel">
+          <option value="email">Email</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="phone">Phone</option>
+        </select>
+        <input id="crmResponsibleId" type="number" placeholder="ID ответственного" />
+        <input id="crmFollowUpHours" type="number" min="1" max="72" value="4" placeholder="Follow-up (ч)" />
+        <span id="crmStatus"></span>
+      </div>
+      <div class="crm-layout">
+        <div class="crm-list" id="crmEmailList">
+          <p style="opacity: 0.6; text-align: center;">Нажмите «Обновить», чтобы загрузить последние письма</p>
+        </div>
+        <div class="crm-detail">
+          <div id="crmEmailMeta" style="font-size: 0.8rem; line-height: 1.2rem;">
+            <div><strong>Тема:</strong> <span id="crmSubject">—</span></div>
+            <div><strong>От:</strong> <span id="crmSender">—</span></div>
+            <div><strong>Дата:</strong> <span id="crmDate">—</span></div>
+          </div>
+          <textarea id="crmEmailBody" readonly placeholder="Содержимое письма..."></textarea>
+          <div class="crm-actions">
+            <button id="crmClassifyBtn" disabled>🤖 Классифицировать</button>
+            <button id="crmProposalBtn" disabled>📝 Сгенерировать КП</button>
+            <button id="crmCopyProposalBtn" disabled>📋 Скопировать КП</button>
+          </div>
+          <div id="crmClassification">AI-анализ будет показан здесь.</div>
+          <textarea id="crmProposalText" placeholder="Текст коммерческого предложения..."></textarea>
+          <div class="crm-grid">
+            <input id="crmContactName" placeholder="Имя контакта" />
+            <input id="crmContactEmail" placeholder="Email контакта" />
+            <input id="crmContactPhone" placeholder="Телефон" />
+            <input id="crmContactCompany" placeholder="Компания" />
+          </div>
+          <div class="crm-checklist">
+            <label><input type="checkbox" id="crmDocProposal" /> КП отправлено</label>
+            <label><input type="checkbox" id="crmDocInvoice" /> Счет отправлен</label>
+            <label><input type="checkbox" id="crmDocContract" /> Договор подписан</label>
+            <label><input type="checkbox" id="crmDocClosing" /> Закрывающие готовы</label>
+          </div>
+          <button id="crmSendToCrm" disabled>🚀 Отправить в amoCRM</button>
+        </div>
       </div>
     </div>
 
