@@ -2812,9 +2812,6 @@ const translations = {
     showPreview: "📄 Show Preview",
     telegramChatId: "Telegram Chat ID (optional)",
     settings: "⚙️ Settings",
-    extractedData: "EXTRACTED DATA",
-    processingResults: "PROCESSING RESULTS",
-    export: "📥 Export",
     steelEquivalents: "⚙️ STEEL EQUIVALENTS",
     telegram: "📱 TELEGRAM",
     logs: "📟 LOGS",
@@ -2838,9 +2835,6 @@ const translations = {
     showPreview: "📄 Показать предпросмотр",
     telegramChatId: "ID чата Telegram (необязательно)",
     settings: "⚙️ Настройки",
-    extractedData: "ИЗВЛЕЧЕННЫЕ ДАННЫЕ",
-    processingResults: "РЕЗУЛЬТАТЫ ОБРАБОТКИ",
-    export: "📥 Экспорт",
     steelEquivalents: "⚙️ ЭКВИВАЛЕНТЫ СТАЛИ",
     telegram: "📱 ТЕЛЕГРАМ",
     logs: "📟 ЛОГИ",
@@ -2907,7 +2901,7 @@ function applyTranslation(lang) {
       expandSpan.className = "expand";
       expandSpan.textContent = "⤡";
     }
-    extractedPanel.innerHTML = `${t.extractedData} <span class="expand">⤡</span>`;
+    extractedPanel.innerHTML = `${t.steelEquivalents} <span class="expand">⤡</span>`;
   }
   
   const resultsPanel = document.querySelector("#panel-results h2");
@@ -2917,7 +2911,7 @@ function applyTranslation(lang) {
       expandSpan.className = "expand";
       expandSpan.textContent = "⤡";
     }
-    resultsPanel.innerHTML = `${t.processingResults} <span class="expand">⤡</span>`;
+    resultsPanel.innerHTML = `${t.logs} <span class="expand">⤡</span>`;
   }
   
   // Update export button
@@ -2998,7 +2992,54 @@ if (userSettings.humEnabled) {
 
 // Initial translation - run after DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => applyTranslation(currentLang));
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTranslation(currentLang);
+    attachRetroSoundEffects();
+  });
 } else {
   applyTranslation(currentLang);
+  attachRetroSoundEffects();
+}
+
+if (typeof MutationObserver !== "undefined") {
+  const retroObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach((node) => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.tagName === "BUTTON") {
+          attachRetroSoundEffects(node);
+        } else {
+          attachRetroSoundEffects(node);
+        }
+      });
+    }
+  });
+
+  if (document.body) {
+    retroObserver.observe(document.body, { childList: true, subtree: true });
+  } else {
+    document.addEventListener("DOMContentLoaded", () => {
+      retroObserver.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+}
+
+function attachRetroSoundEffects(root = document) {
+  const buttons = [];
+  if (root instanceof HTMLButtonElement) {
+    buttons.push(root);
+  }
+  if (typeof root.querySelectorAll === "function") {
+    root.querySelectorAll("button").forEach((button) => buttons.push(button));
+  }
+  buttons.forEach((button) => {
+    if (button.dataset.retroSoundAttached === "true") {
+      return;
+    }
+    button.dataset.retroSoundAttached = "true";
+    button.addEventListener("pointerdown", () => {
+      const basePitch = 320 + Math.random() * 220;
+      playClick(basePitch);
+    });
+  });
 }
