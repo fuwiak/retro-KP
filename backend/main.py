@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List
+import asyncio
 import os
 import time
 from pathlib import Path
@@ -19,6 +20,7 @@ from services.ocr_service import OCRService
 from services.translation_service import TranslationService
 from services.export_service import ExportService
 from services.cloud_service import CloudService
+from services.email_service import email_analysis_service
 from services.logger import api_logger, log_api_request, log_api_response
 
 # Load environment variables
@@ -72,6 +74,77 @@ async def health():
             "export": export_service.is_available()
         }
     }
+
+
+# ========== EMAIL ANALYSIS ENDPOINTS ==========
+
+
+class EmailItem(BaseModel):
+    id: str
+    subject: str
+    sender: str
+    date: str
+    bodyPreview: str
+    fullBody: str
+    nlpCategory: str
+
+
+class EmailClassificationRequest(BaseModel):
+    subject: str
+    sender: str
+    body: str
+
+
+class EmailProposalRequest(BaseModel):
+    subject: str
+    body: str
+
+
+@app.get("/api/emails", response_model=List[EmailItem])
+async def get_emails(limit: int = 20, relevant_only: bool = True):
+    """Fetch recent emails from IMAP inbox."""
+
+    try:
+        emails = await asyncio.to_thread(email_analysis_service.fetch_emails, limit)
+    except Exception as exc:
+        api_logger.error(f"Failed to fetch emails: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if relevant_only:
+        emails = [email for email in emails if email.get("nlpCategory") == "potential"]
+
+    return emails
+
+
+@app.post("/api/emails/classify")
+async def classify_email(request: EmailClassificationRequest):
+    """Classify email using Groq LLM."""
+
+    try:
+        result = await email_analysis_service.classify_email_llm(
+            request.subject,
+            request.sender,
+            request.body,
+        )
+        return {"classification": result}
+    except Exception as exc:
+        api_logger.error(f"Email classification failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/emails/proposal")
+async def generate_email_proposal(request: EmailProposalRequest):
+    """Generate commercial proposal text for email."""
+
+    try:
+        text = await email_analysis_service.generate_proposal(
+            request.subject,
+            request.body,
+        )
+        return {"proposal": text}
+    except Exception as exc:
+        api_logger.error(f"Proposal generation failed: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 # ========== OCR ENDPOINTS ==========

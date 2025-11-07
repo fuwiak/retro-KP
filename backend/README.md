@@ -33,6 +33,9 @@ Download and install from: https://github.com/UB-Mannheim/tesseract/wiki
 ```bash
 cd backend
 pip install -r requirements.txt
+
+# Install Russian spaCy model for email analysis
+python -m spacy download ru_core_news_sm
 ```
 
 ### 3. Configure Environment
@@ -53,7 +56,19 @@ Get your Groq API key from: https://console.groq.com/
 
 **Note**: Groq API key is optional if you only want to use Tesseract OCR.
 
-### 4. Run the Server
+### 4. Configure IMAP Inbox (Email Analysis)
+
+The email analysis feature reads messages from your IMAP inbox. Update `.env` with your mailbox settings:
+
+```
+IMAP_SERVER=imap.example.com
+IMAP_PORT=993
+IMAP_USERNAME=support@example.com
+IMAP_PASSWORD=your_password
+IMAP_FOLDER=INBOX
+```
+
+### 5. Run the Server
 
 ```bash
 python main.py
@@ -61,7 +76,8 @@ python main.py
 
 Or using uvicorn directly:
 
-```bash
+```
+
 uvicorn main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
