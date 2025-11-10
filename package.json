@@ -14,6 +14,6 @@
   "dependencies": {
     "chart.js": "^4.5.1",
     "pdfjs-dist": "^4.0.379",
-    "three": "^0.181.0"
+    "three": "^0.181.1"
   }
 }
