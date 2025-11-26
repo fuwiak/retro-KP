@@ -140,13 +140,17 @@ async def get_emails(limit: int = 20, relevant_only: bool = True):
     return emails
 
 
+class MockModeRequest(BaseModel):
+    enabled: bool
+
+
 @app.post("/api/emails/mock-mode")
-async def toggle_mock_mode(enabled: bool):
+async def toggle_mock_mode(request: MockModeRequest):
     """Enable or disable mock data mode."""
-    email_analysis_service.set_mock_mode(enabled)
+    email_analysis_service.set_mock_mode(request.enabled)
     return {
         "mock_mode": email_analysis_service.is_mock_mode(),
-        "message": f"Mock mode {'enabled' if enabled else 'disabled'}",
+        "message": f"Mock mode {'enabled' if request.enabled else 'disabled'}",
     }
 
 
