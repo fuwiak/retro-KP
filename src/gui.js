@@ -201,7 +201,23 @@ function parseSender(sender = "") {
   return result;
 }
 
-async function populateDefaultContact(email) {
+async function populateOnecFields(email, contactDefaults) {
+  if (!email) return;
+  
+  // Fill customer name from company or contact name
+  if (els.onecCustomerName) {
+    const company = email.extractedCompany || contactDefaults?.company || els.crmContactCompany?.value || "";
+    const contactName = contactDefaults?.name || els.crmContactName?.value || "";
+    els.onecCustomerName.value = company || contactName || "";
+  }
+  
+  // Fill customer BIN if available (could be extracted from email in future)
+  // For now, leave empty as it's usually not in emails
+  
+  // Note: lead_id and contact_id will be filled after sending to CRM
+}
+
+function populateDefaultContact(email) {
   const defaults = { name: "", email: "", phone: "", company: "" };
   if (!email) return defaults;
 
@@ -672,6 +688,15 @@ async function handleCrmSend() {
 
     const result = await crmClient.registerInteraction(payload);
     crmState.completed.add(email.id);
+    
+    // Save CRM IDs for 1C integration
+    if (result.contact_id && els.onecContactId) {
+      els.onecContactId.value = result.contact_id;
+    }
+    if (result.lead_id && els.onecLeadId) {
+      els.onecLeadId.value = result.lead_id;
+    }
+    
     saveCurrentDraft();
     renderCrmEmailList();
     setCrmStatus(`amoCRM: контакт ${result.contact_id}, сделка ${result.lead_id}`, "success");
