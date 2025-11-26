@@ -367,17 +367,125 @@ class EmailAnalysisService:
         return data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
     def _parse_json_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse JSON response with multiple fallback strategies."""
+        
+        if not response_text:
+            return self._default_classification_response("Пустой ответ LLM")
+        
+        # Strategy 1: Try direct JSON parse
         try:
             return json.loads(response_text)
         except json.JSONDecodeError:
-            logger.warning("Failed to parse Groq response as JSON: %s", response_text)
-            return {
-                "suitable_for_proposal": False,
-                "confidence": 0.0,
-                "reason": "Ошибка LLM",
-                "category": "error",
-                "potential_services": [],
-            }
+            pass
+        
+        # Strategy 2: Extract JSON from markdown code blocks (```json ... ```)
+        json_block_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
+        matches = re.findall(json_block_pattern, response_text, re.DOTALL)
+        if matches:
+            for match in matches:
+                try:
+                    return json.loads(match)
+                except json.JSONDecodeError:
+                    continue
+        
+        # Strategy 3: Find JSON object in text (look for {...})
+        json_object_pattern = r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"
+        matches = re.findall(json_object_pattern, response_text, re.DOTALL)
+        for match in matches:
+            try:
+                parsed = json.loads(match)
+                # Validate it has expected structure
+                if isinstance(parsed, dict) and "suitable_for_proposal" in parsed:
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+        
+        # Strategy 4: Try to extract JSON after "json" keyword
+        json_after_keyword = re.search(r"(?:json|JSON)[\s:]*(\{.*\})", response_text, re.DOTALL)
+        if json_after_keyword:
+            try:
+                return json.loads(json_after_keyword.group(1))
+            except (json.JSONDecodeError, AttributeError):
+                pass
+        
+        # Strategy 5: Try to find and parse the largest JSON-like structure
+        # Look for content between first { and last }
+        first_brace = response_text.find("{")
+        last_brace = response_text.rfind("}")
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            json_candidate = response_text[first_brace:last_brace + 1]
+            try:
+                parsed = json.loads(json_candidate)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+        
+        # Strategy 6: Try to extract key-value pairs and build JSON manually
+        extracted = self._extract_classification_from_text(response_text)
+        if extracted:
+            return extracted
+        
+        # All strategies failed
+        logger.warning("Failed to parse Groq response as JSON after all fallbacks: %s", response_text[:200])
+        return self._default_classification_response("Не удалось распарсить ответ LLM")
+    
+    def _extract_classification_from_text(self, text: str) -> Optional[Dict[str, Any]]:
+        """Extract classification data from unstructured text using regex."""
+        result = {
+            "suitable_for_proposal": False,
+            "confidence": 0.5,
+            "reason": "",
+            "category": "other",
+            "potential_services": [],
+        }
+        
+        # Extract suitable_for_proposal
+        if re.search(r'"suitable_for_proposal"\s*:\s*(true|True|TRUE)', text):
+            result["suitable_for_proposal"] = True
+        elif re.search(r'"suitable_for_proposal"\s*:\s*(false|False|FALSE)', text):
+            result["suitable_for_proposal"] = False
+        
+        # Extract confidence
+        confidence_match = re.search(r'"confidence"\s*:\s*([0-9.]+)', text)
+        if confidence_match:
+            try:
+                result["confidence"] = float(confidence_match.group(1))
+            except ValueError:
+                pass
+        
+        # Extract reason
+        reason_match = re.search(r'"reason"\s*:\s*"([^"]+)"', text)
+        if reason_match:
+            result["reason"] = reason_match.group(1)
+        
+        # Extract category
+        category_match = re.search(r'"category"\s*:\s*"([^"]+)"', text)
+        if category_match:
+            result["category"] = category_match.group(1)
+        
+        # Extract potential_services
+        services_match = re.search(r'"potential_services"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+        if services_match:
+            services_text = services_match.group(1)
+            services = re.findall(r'"([^"]+)"', services_text)
+            result["potential_services"] = services
+        
+        # Only return if we found at least some useful data
+        if result.get("reason") or result.get("category") != "other":
+            return result
+        
+        return None
+    
+    def _default_classification_response(self, reason: str) -> Dict[str, Any]:
+        """Return default classification response."""
+        return {
+            "suitable_for_proposal": False,
+            "confidence": 0.0,
+            "reason": reason,
+            "category": "error",
+            "potential_services": [],
+        }
 
     async def generate_mock_emails(self, count: int = 10) -> List[Dict[str, Any]]:
         """Generate realistic mock emails using Groq LLM."""
