@@ -55,17 +55,23 @@ class CRMService:
     """Service coordinating interactions with amoCRM."""
 
     def __init__(self) -> None:
-        self.base_url = os.getenv("AMO_BASE_URL", "").rstrip("/")
-        self.client_id = os.getenv("AMO_CLIENT_ID", "")
-        self.client_secret = os.getenv("AMO_CLIENT_SECRET", "")
-        self.redirect_uri = os.getenv("AMO_REDIRECT_URI", "")
+        # Support both AMO_* and AMOCRM_* prefixes for Railway compatibility
+        self.base_url = (
+            os.getenv("AMO_BASE_URL") or 
+            (f"https://{os.getenv('AMOCRM_SUBDOMAIN', '')}.amocrm.ru" if os.getenv("AMOCRM_SUBDOMAIN") else "")
+        ).rstrip("/") if os.getenv("AMO_BASE_URL") or os.getenv("AMOCRM_SUBDOMAIN") else ""
+        
+        self.client_id = os.getenv("AMO_CLIENT_ID") or os.getenv("AMOCRM_CLIENT_ID", "")
+        self.client_secret = os.getenv("AMO_CLIENT_SECRET") or os.getenv("AMOCRM_CLIENT_SECRET", "")
+        self.redirect_uri = os.getenv("AMO_REDIRECT_URI") or os.getenv("AMOCRM_REDIRECT_URI", "")
 
         self.pipeline_id = self._maybe_int(os.getenv("AMO_PIPELINE_ID"))
         self.lead_status_id = self._maybe_int(os.getenv("AMO_LEAD_STATUS_ID"))
         self.default_responsible_id = self._maybe_int(os.getenv("AMO_RESPONSIBLE_USER_ID"))
 
         self.token_storage = Path(os.getenv("AMO_TOKEN_FILE", "amo_tokens.json"))
-        self.access_token = os.getenv("AMO_ACCESS_TOKEN")
+        # Support both AMO_* and AMOCRM_* prefixes
+        self.access_token = os.getenv("AMO_ACCESS_TOKEN") or os.getenv("AMOCRM_ACCESS_TOKEN")
         self.refresh_token = os.getenv("AMO_REFRESH_TOKEN")
         self._expires_at: Optional[datetime] = None
 

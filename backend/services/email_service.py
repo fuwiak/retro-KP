@@ -29,7 +29,8 @@ class EmailAnalysisService:
     def __init__(self) -> None:
         self.imap_server = os.getenv("IMAP_SERVER", "")
         self.imap_port = int(os.getenv("IMAP_PORT", "993") or 993)
-        self.imap_username = os.getenv("IMAP_USERNAME", "")
+        # Support both IMAP_USERNAME and IMAP_USER for backward compatibility
+        self.imap_username = os.getenv("IMAP_USERNAME") or os.getenv("IMAP_USER", "")
         self.imap_password = os.getenv("IMAP_PASSWORD", "")
         self.imap_folder = os.getenv("IMAP_FOLDER", "INBOX")
 

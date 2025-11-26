@@ -18,6 +18,20 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Load environment variables FIRST, before importing services
+# Try to find .env file in backend directory (works regardless of CWD)
+backend_dir = Path(__file__).parent
+env_path = backend_dir / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+    print(f"✅ Loaded .env from {env_path}")
+else:
+    # Fallback: try current directory and parent directory
+    load_dotenv()  # Current directory
+    load_dotenv(dotenv_path=backend_dir.parent / ".env")  # Parent directory
+    print("✅ Loaded .env from default locations (or using system env vars)")
+
+# Now import services (they will use the loaded env vars)
 from services.ocr_service import OCRService
 from services.translation_service import TranslationService
 from services.export_service import ExportService
@@ -35,9 +49,6 @@ from services.crm_service import (
 from services.sla_monitor_service import sla_monitor_service
 from services.call_transcription_service import call_transcription_service
 from services.document_control_service import document_control_service
-
-# Load environment variables
-load_dotenv()
 
 app = FastAPI(
     title="CRM & 1C Integration Hub",
