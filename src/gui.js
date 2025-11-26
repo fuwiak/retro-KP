@@ -538,6 +538,13 @@ async function refreshCrmInbox() {
     setCrmStatus(errorMsg, "error");
     log(`❌ Ошибка загрузки писем: ${errorMsg}`);
     
+    // Show help drawer if Gmail authentication error
+    if (errorMsg.includes("Gmail") || errorMsg.includes("App Password") || errorMsg.includes("authentication") || errorMsg.includes("IMAP")) {
+      if (typeof showHelp === "function") {
+        showHelp(errorMsg);
+      }
+    }
+    
     // Clear email list on error
     crmState.emails = [];
     crmState.selectedIndex = null;
