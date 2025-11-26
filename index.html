@@ -247,8 +247,9 @@
         gap: 10px;
       }
       .crm-list {
-        flex: 1 1 260px;
-        max-height: 420px;
+        flex: 1 1 400px;
+        min-width: 350px;
+        max-height: 600px;
         overflow-y: auto;
         border: 1px solid var(--ui-color);
         background: rgba(0, 0, 0, 0.6);
@@ -290,8 +291,9 @@
         opacity: 0.8;
       }
       .crm-detail {
-        flex: 2 1 420px;
-        max-width: 720px;
+        flex: 2 1 500px;
+        min-width: 450px;
+        max-width: 800px;
         border: 1px solid var(--ui-color);
         background: rgba(0, 0, 0, 0.55);
         padding: 6px;
@@ -814,7 +816,7 @@
       <h2>🤖 CRM AUTO PILOT <span class="expand">⤡</span></h2>
       <div class="crm-controls">
         <button id="crmRefreshBtn">🔄 Обновить письма</button>
-        <button id="crmMockToggleBtn" title="Включить/выключить тестовые данные">🧪 Mock Data</button>
+        <button id="crmMockToggleBtn" title="Включить/выключить тестовые данные">🧪 Тестовые данные</button>
         <label><input type="checkbox" id="crmRelevantOnly" checked /> Только коммерческие</label>
         <label>Limit
           <input id="crmEmailLimit" type="number" min="5" max="50" step="5" value="20" />
@@ -860,6 +862,66 @@
       </div>
           <button id="crmSendToCrm" disabled>🚀 Отправить в amoCRM</button>
     </div>
+      </div>
+    </div>
+
+    <!-- 1C INTEGRATION SECTION -->
+    <div class="panel" id="onecIntegrationSection" style="max-width: 1220px; margin: 12px auto;">
+      <h2>📄 Интеграция с 1С <span class="expand">⤡</span></h2>
+      <div style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+          <label>ID сделки: <input type="number" id="onecLeadId" placeholder="ID сделки" style="width: 120px;" /></label>
+          <label>ID контакта: <input type="number" id="onecContactId" placeholder="ID контакта" style="width: 120px;" /></label>
+          <label>Название клиента: <input type="text" id="onecCustomerName" placeholder="Название компании" style="width: 200px;" /></label>
+          <label>БИН/ИИН: <input type="text" id="onecCustomerBin" placeholder="БИН/ИИН" style="width: 150px;" /></label>
+        </div>
+        
+        <div style="border: 1px solid var(--ui-color); padding: 8px; background: rgba(0,0,0,0.4);">
+          <h3 style="margin: 0 0 8px 0; font-size: 0.85rem;">Создание счёта на оплату</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+            <label>Валюта: 
+              <select id="onecInvoiceCurrency" style="width: 100px;">
+                <option value="KZT">KZT</option>
+                <option value="RUB">RUB</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+            <label>Срок оплаты: <input type="date" id="onecInvoiceDueDate" style="width: 150px;" /></label>
+          </div>
+          <div id="onecInvoiceItems" style="margin-bottom: 8px;">
+            <div style="display: flex; gap: 6px; margin-bottom: 4px; align-items: center;">
+              <input type="text" placeholder="Артикул" style="width: 100px; font-size: 0.7rem;" class="onec-item-sku" />
+              <input type="text" placeholder="Описание" style="flex: 1; font-size: 0.7rem;" class="onec-item-desc" required />
+              <input type="number" placeholder="Кол-во" step="0.01" style="width: 80px; font-size: 0.7rem;" class="onec-item-qty" required />
+              <input type="text" placeholder="Ед." style="width: 60px; font-size: 0.7rem;" class="onec-item-unit" />
+              <input type="number" placeholder="Цена" step="0.01" style="width: 100px; font-size: 0.7rem;" class="onec-item-price" required />
+              <button onclick="removeOnecItem(this)" style="font-size: 0.7rem; padding: 2px 6px;">✖</button>
+            </div>
+          </div>
+          <button id="onecAddInvoiceItem" style="font-size: 0.7rem; padding: 2px 6px; margin-bottom: 8px;">+ Добавить товар</button>
+          <button id="onecCreateInvoiceBtn" style="font-size: 0.75rem;">📄 Создать счёт</button>
+          <span id="onecInvoiceStatus" style="margin-left: 10px; font-size: 0.7rem;"></span>
+        </div>
+
+        <div style="border: 1px solid var(--ui-color); padding: 8px; background: rgba(0,0,0,0.4);">
+          <h3 style="margin: 0 0 8px 0; font-size: 0.85rem;">Создание накладной и акта</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+            <label>Адрес доставки: <input type="text" id="onecDeliveryAddress" placeholder="Адрес доставки" style="width: 300px;" /></label>
+          </div>
+          <div id="onecFulfillmentItems" style="margin-bottom: 8px;">
+            <div style="display: flex; gap: 6px; margin-bottom: 4px; align-items: center;">
+              <input type="text" placeholder="Артикул" style="width: 100px; font-size: 0.7rem;" class="onec-item-sku" />
+              <input type="text" placeholder="Описание" style="flex: 1; font-size: 0.7rem;" class="onec-item-desc" required />
+              <input type="number" placeholder="Кол-во" step="0.01" style="width: 80px; font-size: 0.7rem;" class="onec-item-qty" required />
+              <input type="text" placeholder="Ед." style="width: 60px; font-size: 0.7rem;" class="onec-item-unit" />
+              <input type="number" placeholder="Цена" step="0.01" style="width: 100px; font-size: 0.7rem;" class="onec-item-price" required />
+              <button onclick="removeOnecItem(this)" style="font-size: 0.7rem; padding: 2px 6px;">✖</button>
+            </div>
+          </div>
+          <button id="onecAddFulfillmentItem" style="font-size: 0.7rem; padding: 2px 6px; margin-bottom: 8px;">+ Добавить товар</button>
+          <button id="onecCreateFulfillmentBtn" style="font-size: 0.75rem;">📦 Создать накладную и акт</button>
+          <span id="onecFulfillmentStatus" style="margin-left: 10px; font-size: 0.7rem;"></span>
+        </div>
       </div>
     </div>
 

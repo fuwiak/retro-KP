@@ -3,6 +3,7 @@
 import { getApiBaseUrl } from "./config.js";
 import * as emailInbox from "./emailInbox.js";
 import * as crmClient from "./crmClient.js";
+import * as onecClient from "./onecClient.js";
 
 const els = {
   colorPicker: document.getElementById("colorPicker"),
@@ -38,6 +39,20 @@ const els = {
   crmDocContract: document.getElementById("crmDocContract"),
   crmDocClosing: document.getElementById("crmDocClosing"),
   crmSendBtn: document.getElementById("crmSendToCrm"),
+  // 1C Integration elements
+  onecLeadId: document.getElementById("onecLeadId"),
+  onecContactId: document.getElementById("onecContactId"),
+  onecCustomerName: document.getElementById("onecCustomerName"),
+  onecCustomerBin: document.getElementById("onecCustomerBin"),
+  onecInvoiceCurrency: document.getElementById("onecInvoiceCurrency"),
+  onecInvoiceDueDate: document.getElementById("onecInvoiceDueDate"),
+  onecInvoiceItems: document.getElementById("onecInvoiceItems"),
+  onecCreateInvoiceBtn: document.getElementById("onecCreateInvoiceBtn"),
+  onecInvoiceStatus: document.getElementById("onecInvoiceStatus"),
+  onecDeliveryAddress: document.getElementById("onecDeliveryAddress"),
+  onecFulfillmentItems: document.getElementById("onecFulfillmentItems"),
+  onecCreateFulfillmentBtn: document.getElementById("onecCreateFulfillmentBtn"),
+  onecFulfillmentStatus: document.getElementById("onecFulfillmentStatus"),
 };
 
 function log(message, ...args) {
@@ -693,7 +708,7 @@ async function toggleMockMode() {
     
     // Update button appearance
     if (els.crmMockToggleBtn) {
-      els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Mock ON" : "🧪 Mock Data";
+      els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Тестовые данные ВКЛ" : "🧪 Тестовые данные";
       els.crmMockToggleBtn.style.background = crmState.mockMode 
         ? "rgba(0, 255, 128, 0.2)" 
         : "rgba(0, 0, 0, 0.8)";
@@ -723,7 +738,7 @@ async function checkMockModeStatus() {
       crmState.mockMode = data.mock_mode;
       
       if (els.crmMockToggleBtn) {
-        els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Mock ON" : "🧪 Mock Data";
+        els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Тестовые данные ВКЛ" : "🧪 Тестовые данные";
         els.crmMockToggleBtn.style.background = crmState.mockMode 
           ? "rgba(0, 255, 128, 0.2)" 
           : "rgba(0, 0, 0, 0.8)";
