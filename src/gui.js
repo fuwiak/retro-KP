@@ -828,3 +828,245 @@ try {
 
 setCrmStatus("Бот готов к работе", "info");
 refreshCrmInbox();
+
+// ========== 1C INTEGRATION FUNCTIONS ==========
+
+function addOnecItem(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const itemDiv = document.createElement("div");
+  itemDiv.style.cssText = "display: flex; gap: 6px; margin-bottom: 4px; align-items: center;";
+  itemDiv.innerHTML = `
+    <input type="text" placeholder="Артикул" style="width: 100px; font-size: 0.7rem;" class="onec-item-sku" />
+    <input type="text" placeholder="Описание" style="flex: 1; font-size: 0.7rem;" class="onec-item-desc" required />
+    <input type="number" placeholder="Кол-во" step="0.01" style="width: 80px; font-size: 0.7rem;" class="onec-item-qty" required />
+    <input type="text" placeholder="Ед." style="width: 60px; font-size: 0.7rem;" class="onec-item-unit" />
+    <input type="number" placeholder="Цена" step="0.01" style="width: 100px; font-size: 0.7rem;" class="onec-item-price" required />
+    <button onclick="removeOnecItem(this)" style="font-size: 0.7rem; padding: 2px 6px;">✖</button>
+  `;
+  container.appendChild(itemDiv);
+}
+
+function removeOnecItem(button) {
+  button.parentElement.remove();
+}
+
+function collectOnecItems(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+
+  const items = [];
+  const rows = container.querySelectorAll("div");
+  
+  rows.forEach((row) => {
+    const desc = row.querySelector(".onec-item-desc")?.value?.trim();
+    const qty = parseFloat(row.querySelector(".onec-item-qty")?.value);
+    const price = parseFloat(row.querySelector(".onec-item-price")?.value);
+    
+    if (!desc || !qty || !price) return;
+
+    items.push({
+      article: row.querySelector(".onec-item-sku")?.value?.trim() || undefined,
+      description: desc,
+      quantity: qty,
+      unit: row.querySelector(".onec-item-unit")?.value?.trim() || undefined,
+      price: price,
+    });
+  });
+
+  return items;
+}
+
+async function handleCreateInvoice() {
+  if (!els.onecCreateInvoiceBtn) return;
+
+  const leadId = els.onecLeadId?.value;
+  const customerName = els.onecCustomerName?.value?.trim();
+  const items = collectOnecItems("onecInvoiceItems");
+
+  if (!leadId || !customerName) {
+    if (els.onecInvoiceStatus) {
+      els.onecInvoiceStatus.textContent = "❌ Заполните ID сделки и название клиента";
+      els.onecInvoiceStatus.style.color = "rgb(255, 0, 0)";
+    }
+    return;
+  }
+
+  if (items.length === 0) {
+    if (els.onecInvoiceStatus) {
+      els.onecInvoiceStatus.textContent = "❌ Добавьте хотя бы один товар";
+      els.onecInvoiceStatus.style.color = "rgb(255, 0, 0)";
+    }
+    return;
+  }
+
+  els.onecCreateInvoiceBtn.disabled = true;
+  if (els.onecInvoiceStatus) {
+    els.onecInvoiceStatus.textContent = "Создаём счёт...";
+    els.onecInvoiceStatus.style.color = "var(--ui-color)";
+  }
+
+  try {
+    const payload = {
+      lead_id: parseInt(leadId, 10),
+      crm_contact_id: els.onecContactId?.value ? parseInt(els.onecContactId.value, 10) : undefined,
+      customer_name: customerName,
+      customer_bin: els.onecCustomerBin?.value?.trim() || undefined,
+      currency: els.onecInvoiceCurrency?.value || "KZT",
+      due_date: els.onecInvoiceDueDate?.value || undefined,
+      items: items,
+    };
+
+    const result = await onecClient.createInvoice(payload);
+    const invoiceNumber = result.invoice?.invoiceNumber || result.invoice?.docNumber || "N/A";
+
+    if (els.onecInvoiceStatus) {
+      els.onecInvoiceStatus.textContent = `✅ Счёт создан: ${invoiceNumber}`;
+      els.onecInvoiceStatus.style.color = "rgb(0, 255, 128)";
+    }
+
+    log(`✅ Счёт создан в 1С: ${invoiceNumber} (сделка ${leadId})`);
+
+    const pdfRef = result.invoice?.pdfRef || result.invoice?.uuid;
+    if (pdfRef) {
+      const downloadBtn = document.createElement("button");
+      downloadBtn.textContent = "📥 Скачать PDF";
+      downloadBtn.style.cssText = "font-size: 0.7rem; padding: 2px 6px; margin-left: 8px;";
+      downloadBtn.onclick = async () => {
+        try {
+          const blob = await onecClient.getInvoicePdf(pdfRef);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `invoice_${invoiceNumber}.pdf`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          log(`❌ Ошибка скачивания PDF: ${error.message}`);
+        }
+      };
+      if (els.onecInvoiceStatus) {
+        els.onecInvoiceStatus.appendChild(downloadBtn);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    if (els.onecInvoiceStatus) {
+      els.onecInvoiceStatus.textContent = `❌ Ошибка: ${error.message}`;
+      els.onecInvoiceStatus.style.color = "rgb(255, 0, 0)";
+    }
+    log(`❌ Ошибка создания счёта: ${error.message || error}`);
+  } finally {
+    if (els.onecCreateInvoiceBtn) {
+      els.onecCreateInvoiceBtn.disabled = false;
+    }
+  }
+}
+
+async function handleCreateFulfillment() {
+  if (!els.onecCreateFulfillmentBtn) return;
+
+  const leadId = els.onecLeadId?.value;
+  const customerName = els.onecCustomerName?.value?.trim();
+  const items = collectOnecItems("onecFulfillmentItems");
+
+  if (!leadId || !customerName) {
+    if (els.onecFulfillmentStatus) {
+      els.onecFulfillmentStatus.textContent = "❌ Заполните ID сделки и название клиента";
+      els.onecFulfillmentStatus.style.color = "rgb(255, 0, 0)";
+    }
+    return;
+  }
+
+  if (items.length === 0) {
+    if (els.onecFulfillmentStatus) {
+      els.onecFulfillmentStatus.textContent = "❌ Добавьте хотя бы один товар";
+      els.onecFulfillmentStatus.style.color = "rgb(255, 0, 0)";
+    }
+    return;
+  }
+
+  els.onecCreateFulfillmentBtn.disabled = true;
+  if (els.onecFulfillmentStatus) {
+    els.onecFulfillmentStatus.textContent = "Создаём накладную и акт...";
+    els.onecFulfillmentStatus.style.color = "var(--ui-color)";
+  }
+
+  try {
+    const payload = {
+      lead_id: parseInt(leadId, 10),
+      crm_contact_id: els.onecContactId?.value ? parseInt(els.onecContactId.value, 10) : undefined,
+      customer_name: customerName,
+      customer_bin: els.onecCustomerBin?.value?.trim() || undefined,
+      delivery_address: els.onecDeliveryAddress?.value?.trim() || undefined,
+      items: items,
+    };
+
+    const result = await onecClient.createFulfillment(payload);
+    const waybillNumber = result.documents?.waybillNumber || "N/A";
+    const actNumber = result.documents?.actNumber || "N/A";
+
+    if (els.onecFulfillmentStatus) {
+      els.onecFulfillmentStatus.textContent = `✅ Накладная: ${waybillNumber}, Акт: ${actNumber}`;
+      els.onecFulfillmentStatus.style.color = "rgb(0, 255, 128)";
+    }
+
+    log(`✅ Накладная и акт созданы в 1С: ${waybillNumber} / ${actNumber} (сделка ${leadId})`);
+
+    const pdfRef = result.documents?.pdfRef || result.documents?.uuid;
+    if (pdfRef) {
+      const downloadBtn = document.createElement("button");
+      downloadBtn.textContent = "📥 Скачать PDF";
+      downloadBtn.style.cssText = "font-size: 0.7rem; padding: 2px 6px; margin-left: 8px;";
+      downloadBtn.onclick = async () => {
+        try {
+          const blob = await onecClient.getRealizationPdf(pdfRef);
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `fulfillment_${waybillNumber}.pdf`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          log(`❌ Ошибка скачивания PDF: ${error.message}`);
+        }
+      };
+      if (els.onecFulfillmentStatus) {
+        els.onecFulfillmentStatus.appendChild(downloadBtn);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    if (els.onecFulfillmentStatus) {
+      els.onecFulfillmentStatus.textContent = `❌ Ошибка: ${error.message}`;
+      els.onecFulfillmentStatus.style.color = "rgb(255, 0, 0)";
+    }
+    log(`❌ Ошибка создания накладной/акта: ${error.message || error}`);
+  } finally {
+    if (els.onecCreateFulfillmentBtn) {
+      els.onecCreateFulfillmentBtn.disabled = false;
+    }
+  }
+}
+
+// Make functions global for onclick handlers
+window.addOnecItem = addOnecItem;
+window.removeOnecItem = removeOnecItem;
+
+// Event listeners for 1C buttons
+if (els.onecCreateInvoiceBtn) {
+  els.onecCreateInvoiceBtn.addEventListener("click", handleCreateInvoice);
+}
+
+if (els.onecCreateFulfillmentBtn) {
+  els.onecCreateFulfillmentBtn.addEventListener("click", handleCreateFulfillment);
+}
+
+if (document.getElementById("onecAddInvoiceItem")) {
+  document.getElementById("onecAddInvoiceItem").addEventListener("click", () => addOnecItem("onecInvoiceItems"));
+}
+
+if (document.getElementById("onecAddFulfillmentItem")) {
+  document.getElementById("onecAddFulfillmentItem").addEventListener("click", () => addOnecItem("onecFulfillmentItems"));
+}
