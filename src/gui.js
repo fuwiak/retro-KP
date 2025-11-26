@@ -18,6 +18,10 @@ const els = {
   credentialsToggle: document.getElementById("credentialsToggle"),
   credentialsDrawer: document.getElementById("credentialsDrawer"),
   credentialsClose: document.getElementById("credentialsClose"),
+  helpToggle: document.getElementById("helpToggle"),
+  helpDrawer: document.getElementById("helpDrawer"),
+  helpClose: document.getElementById("helpClose"),
+  helpContent: document.getElementById("helpContent"),
   crmRefreshBtn: document.getElementById("crmRefreshBtn"),
   crmMockToggleBtn: document.getElementById("crmMockToggleBtn"),
   crmRelevantOnly: document.getElementById("crmRelevantOnly"),
@@ -780,8 +784,38 @@ function togglePassword(button) {
   }
 }
 
-// Make function global for onclick handlers
+// Help drawer toggle
+if (els.helpToggle && els.helpDrawer) {
+  els.helpToggle.addEventListener("click", () => {
+    els.helpDrawer.style.bottom = els.helpDrawer.style.bottom === "40px" ? "-500px" : "40px";
+  });
+}
+
+if (els.helpClose && els.helpDrawer) {
+  els.helpClose.addEventListener("click", () => {
+    els.helpDrawer.style.bottom = "-500px";
+  });
+}
+
+// Function to show help with specific error message
+function showHelp(errorMessage) {
+  if (!els.helpDrawer || !els.helpContent) return;
+  
+  // Update help content with specific error if provided
+  if (errorMessage) {
+    const errorDiv = document.createElement("div");
+    errorDiv.style.cssText = "margin-bottom: 12px; padding: 8px; background: rgba(255, 0, 0, 0.15); border-left: 3px solid rgb(255, 0, 0);";
+    errorDiv.innerHTML = `<strong style="color: rgb(255, 0, 0);">❌ Ошибка:</strong><p style="margin: 6px 0 0 0; font-family: monospace; font-size: 0.7rem;">${errorMessage}</p>`;
+    els.helpContent.insertBefore(errorDiv, els.helpContent.firstChild);
+  }
+  
+  // Show drawer
+  els.helpDrawer.style.bottom = "40px";
+}
+
+// Make functions global
 window.togglePassword = togglePassword;
+window.showHelp = showHelp;
 
 if (els.crmEmailList) {
   els.crmEmailList.addEventListener("click", (event) => {
