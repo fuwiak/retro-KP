@@ -611,11 +611,7 @@ async function handleCrmSend() {
     return;
   }
   
-  const contactName = (els.crmContactName?.value || "").trim();
-  if (!contactName) {
-    setCrmStatus("Имя контакта обязательно", "error");
-    return;
-  }
+  const contactName = (els.crmContactName?.value || "").trim() || "Клиент";
   
   const contactEmail = (els.crmContactEmail?.value || "").trim();
   const contactPhone = (els.crmContactPhone?.value || "").trim();
