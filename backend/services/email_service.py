@@ -564,6 +564,14 @@ class EmailAnalysisService:
                     body = email_data.get("body", "")
                     sender = email_data.get("sender", f"Клиент {idx + 1} <client{idx + 1}@example.com>")
                     date_str = email_data.get("date", "")
+                    phone = email_data.get("phone", "")
+                    company = email_data.get("company", "")
+
+                    # Ensure phone and company are in the body if provided
+                    if phone and phone not in body:
+                        body = f"{body}\n\nКонтактный телефон: {phone}"
+                    if company and company not in body:
+                        body = f"{body}\n\nКомпания: {company}"
 
                     nlp_category = self.simple_nlp_filter(subject, sender, body)
 
@@ -575,6 +583,8 @@ class EmailAnalysisService:
                         "bodyPreview": body[:300],
                         "fullBody": body,
                         "nlpCategory": nlp_category,
+                        "extractedPhone": phone,
+                        "extractedCompany": company,
                     })
 
                 return mock_emails
