@@ -836,13 +836,13 @@
             <div><strong>Тема:</strong> <span id="crmSubject">—</span></div>
             <div><strong>От:</strong> <span id="crmSender">—</span></div>
             <div><strong>Дата:</strong> <span id="crmDate">—</span></div>
-          </div>
+      </div>
           <textarea id="crmEmailBody" readonly placeholder="Содержимое письма..."></textarea>
           <div class="crm-actions">
             <button id="crmClassifyBtn" disabled>🤖 Классифицировать</button>
             <button id="crmProposalBtn" disabled>📝 Сгенерировать КП</button>
             <button id="crmCopyProposalBtn" disabled>📋 Скопировать КП</button>
-        </div>
+      </div>
           <div id="crmClassification">AI-анализ будет показан здесь.</div>
           <textarea id="crmProposalText" placeholder="Текст коммерческого предложения..."></textarea>
           <div class="crm-grid">
@@ -850,22 +850,22 @@
             <input id="crmContactEmail" placeholder="Email контакта" />
             <input id="crmContactPhone" placeholder="Телефон" />
             <input id="crmContactCompany" placeholder="Компания" />
-          </div>
+    </div>
           <div class="crm-checklist">
             <label><input type="checkbox" id="crmDocProposal" /> КП отправлено</label>
             <label><input type="checkbox" id="crmDocInvoice" /> Счет отправлен</label>
             <label><input type="checkbox" id="crmDocContract" /> Договор подписан</label>
             <label><input type="checkbox" id="crmDocClosing" /> Закрывающие готовы</label>
-        </div>
+      </div>
           <button id="crmSendToCrm" disabled>🚀 Отправить в amoCRM</button>
-        </div>
+    </div>
       </div>
     </div>
 
     <!-- LOG DRAWER -->
     <button id="logToggle" style="position: fixed; bottom: 12px; right: 12px; border: 1px solid var(--ui-color); color: var(--ui-color); background: rgba(0, 0, 0, 0.7); padding: 6px 10px; font-size: 0.75rem; cursor: pointer; text-shadow: 0 0 6px var(--ui-color);">
       📟 LOGS
-    </button>
+        </button>
     <div id="logDrawer" style="position: fixed; bottom: -320px; right: 12px; width: 360px; height: 300px; background: rgba(0,0,0,0.92); border: 1px solid var(--ui-color); box-shadow: 0 0 12px var(--ui-color); padding: 10px; transition: bottom 0.4s ease; display: flex; flex-direction: column; z-index: 120;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
         <h2 style="margin: 0; font-size: 0.85rem;">LOG TERMINAL</h2>

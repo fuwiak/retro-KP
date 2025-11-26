@@ -55,12 +55,39 @@ class EmailAnalysisService:
 
         mail = imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
         try:
-            mail.login(self.imap_username, self.imap_password)
-            mail.select(self.imap_folder)
+            try:
+                mail.login(self.imap_username, self.imap_password)
+            except imaplib.IMAP4.error as exc:
+                error_msg = str(exc)
+                # Gmail-specific error handling
+                if "Lookup failed" in error_msg or "Invalid credentials" in error_msg:
+                    if "gmail.com" in self.imap_server.lower():
+                        raise ValueError(
+                            "Gmail authentication failed. Gmail requires an App Password instead of regular password. "
+                            "Please:\n"
+                            "1. Enable 2-Step Verification in your Google Account\n"
+                            "2. Generate an App Password: https://myaccount.google.com/apppasswords\n"
+                            "3. Use the App Password in IMAP_PASSWORD (not your regular password)"
+                        ) from exc
+                    else:
+                        raise ValueError(
+                            f"IMAP authentication failed: {error_msg}. "
+                            "Please check IMAP_USERNAME and IMAP_PASSWORD."
+                        ) from exc
+                else:
+                    raise ValueError(f"IMAP login error: {error_msg}") from exc
+
+            try:
+                mail.select(self.imap_folder)
+            except imaplib.IMAP4.error as exc:
+                raise ValueError(
+                    f"Failed to select folder '{self.imap_folder}': {exc}. "
+                    f"Available folders might be different. Check IMAP_FOLDER setting."
+                ) from exc
 
             status, data = mail.search(None, "ALL")
             if status != "OK":
-                raise RuntimeError("Failed to search inbox")
+                raise RuntimeError(f"Failed to search inbox: {status}")
 
             message_ids = data[0].split()
             if not message_ids:
@@ -70,32 +97,36 @@ class EmailAnalysisService:
             emails: List[Dict[str, Any]] = []
 
             for msg_id in reversed(last_ids):
-                status, msg_data = mail.fetch(msg_id, "(RFC822)")
-                if status != "OK" or not msg_data or msg_data[0] is None:
-                    logger.warning("Failed to fetch message %s", msg_id)
+                try:
+                    status, msg_data = mail.fetch(msg_id, "(RFC822)")
+                    if status != "OK" or not msg_data or msg_data[0] is None:
+                        logger.warning("Failed to fetch message %s", msg_id)
+                        continue
+
+                    raw_email = msg_data[0][1]
+                    message = message_from_bytes(raw_email)
+
+                    subject = self._clean_subject(message.get("Subject"))
+                    sender = message.get("From", "")
+                    date = message.get("Date", "")
+                    body = self._extract_body(message)
+
+                    nlp_category = self.simple_nlp_filter(subject, sender, body)
+
+                    emails.append(
+                        {
+                            "id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
+                            "subject": subject,
+                            "sender": sender,
+                            "date": date,
+                            "bodyPreview": body[:300],
+                            "fullBody": body,
+                            "nlpCategory": nlp_category,
+                        }
+                    )
+                except Exception as exc:
+                    logger.warning("Error processing message %s: %s", msg_id, exc)
                     continue
-
-                raw_email = msg_data[0][1]
-                message = message_from_bytes(raw_email)
-
-                subject = self._clean_subject(message.get("Subject"))
-                sender = message.get("From", "")
-                date = message.get("Date", "")
-                body = self._extract_body(message)
-
-                nlp_category = self.simple_nlp_filter(subject, sender, body)
-
-                emails.append(
-                    {
-                        "id": msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id),
-                        "subject": subject,
-                        "sender": sender,
-                        "date": date,
-                        "bodyPreview": body[:300],
-                        "fullBody": body,
-                        "nlpCategory": nlp_category,
-                    }
-                )
 
             return emails
         finally:
