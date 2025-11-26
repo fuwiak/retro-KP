@@ -933,6 +933,57 @@
       </div>
     </div>
 
+    <!-- CREDENTIALS TOGGLE BUTTON -->
+    <button id="credentialsToggle" style="position: fixed; bottom: 12px; right: 350px; border: 1px solid var(--ui-color); color: var(--ui-color); background: rgba(0, 0, 0, 0.7); padding: 6px 10px; font-size: 0.75rem; cursor: pointer; text-shadow: 0 0 6px var(--ui-color); z-index: 100;">
+      🔐 Учетные данные
+    </button>
+    
+    <!-- CREDENTIALS DRAWER -->
+    <div id="credentialsDrawer" style="position: fixed; bottom: -500px; right: 12px; width: 500px; max-height: 500px; background: rgba(0,0,0,0.92); border: 1px solid var(--ui-color); box-shadow: 0 0 12px var(--ui-color); padding: 10px; transition: bottom 0.4s ease; display: flex; flex-direction: column; z-index: 115; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <h2 style="margin: 0; font-size: 0.85rem;">🔐 Учетные данные</h2>
+        <button id="credentialsClose" style="background: rgba(0,0,0,0.6); border: 1px solid var(--ui-color); color: var(--ui-color); font-size: 0.7rem; padding: 2px 6px; cursor: pointer;">✖</button>
+      </div>
+      <div id="credentialsArea" style="flex: 1; overflow-y: auto; font-size: 0.75rem; line-height: 1.4rem; background: rgba(0,0,0,0.6); border: 1px dashed var(--ui-color); padding: 8px;">
+        <div style="margin-bottom: 12px;">
+          <strong>amoCRM:</strong><br>
+          Логин: <span class="cred-value">support@stalkerelectric.kz</span><br>
+          Пароль: <span class="cred-password" data-password="Astana2015kz1234567890">••••••••••••••••••••</span> <button class="cred-toggle" onclick="togglePassword(this)" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👁</button><br>
+          API: <a href="https://www.amocrm.ru/developers/content/files/files-api" target="_blank" style="color: var(--ui-color);">https://www.amocrm.ru/developers/content/files/files-api</a>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>1С:</strong><br>
+          URL: <a href="https://buh.uchet.kz/C3beseath3649" target="_blank" style="color: var(--ui-color);">https://buh.uchet.kz/C3beseath3649</a>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>OnlinePBX телефония:</strong><br>
+          URL: <a href="https://panel.onlinepbx.ru/account/profile" target="_blank" style="color: var(--ui-color);">https://panel.onlinepbx.ru/account/profile</a><br>
+          Логин: <span class="cred-value">support@stalkerelectric.kz</span><br>
+          Пароль: <span class="cred-password" data-password="Support1">••••••••</span> <button class="cred-toggle" onclick="togglePassword(this)" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👁</button><br>
+          API: <a href="https://panel.onlinepbx.ru/integration/api" target="_blank" style="color: var(--ui-color);">https://panel.onlinepbx.ru/integration/api</a>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>E-mail (IMAP):</strong><br>
+          Логин: <span class="cred-value">support@stalkerelectric.kz</span><br>
+          Пароль: <span class="cred-password" data-password="Mb%%o@g9Z#tP1EUvBHEs43ljMb%%o@g9Z#tP1E">••••••••••••••••••••</span> <button class="cred-toggle" onclick="togglePassword(this)" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👁</button>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>Gmail (новый):</strong><br>
+          Логин: <span class="cred-value">shyngisarzayev@gmail.com</span><br>
+          Пароль: <span class="cred-password" data-password="Aa123456@">••••••••</span> <button class="cred-toggle" onclick="togglePassword(this)" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👁</button>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>Арсен (телефон):</strong><br>
+          Временный пароль: <span class="cred-password" data-password="aGg-Q89-5gV-JLA">••••••••••••</span> <button class="cred-toggle" onclick="togglePassword(this)" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👁</button>
+        </div>
+      </div>
+    </div>
+
     <!-- LOG DRAWER -->
     <button id="logToggle" style="position: fixed; bottom: 12px; right: 12px; border: 1px solid var(--ui-color); color: var(--ui-color); background: rgba(0, 0, 0, 0.7); padding: 6px 10px; font-size: 0.75rem; cursor: pointer; text-shadow: 0 0 6px var(--ui-color);">
       📟 LOGS

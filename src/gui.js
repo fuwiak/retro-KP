@@ -749,6 +749,37 @@ if (els.onecClose && els.onecDrawer) {
   });
 }
 
+// Credentials drawer toggle
+if (els.credentialsToggle && els.credentialsDrawer) {
+  els.credentialsToggle.addEventListener("click", () => {
+    els.credentialsDrawer.style.bottom = els.credentialsDrawer.style.bottom === "40px" ? "-500px" : "40px";
+  });
+}
+
+if (els.credentialsClose && els.credentialsDrawer) {
+  els.credentialsClose.addEventListener("click", () => {
+    els.credentialsDrawer.style.bottom = "-500px";
+  });
+}
+
+// Toggle password visibility
+function togglePassword(button) {
+  const passwordSpan = button.previousElementSibling;
+  if (!passwordSpan || !passwordSpan.classList.contains("cred-password")) return;
+  
+  const isHidden = passwordSpan.textContent.includes("•");
+  if (isHidden) {
+    passwordSpan.textContent = passwordSpan.dataset.password;
+    button.textContent = "🙈";
+  } else {
+    passwordSpan.textContent = "•".repeat(passwordSpan.dataset.password.length);
+    button.textContent = "👁";
+  }
+}
+
+// Make function global for onclick handlers
+window.togglePassword = togglePassword;
+
 if (els.crmEmailList) {
   els.crmEmailList.addEventListener("click", (event) => {
     const item = event.target.closest("[data-crm-index]");
