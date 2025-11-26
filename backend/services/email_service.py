@@ -379,6 +379,15 @@ class EmailAnalysisService:
                 "potential_services": [],
             }
 
+    def set_mock_mode(self, enabled: bool) -> None:
+        """Enable or disable mock data mode."""
+        self._mock_mode = enabled
+        logger.info(f"Mock mode {'enabled' if enabled else 'disabled'}")
+
+    def is_mock_mode(self) -> bool:
+        """Check if mock mode is enabled."""
+        return self._mock_mode
+
 
 email_analysis_service = EmailAnalysisService()
 
