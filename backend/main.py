@@ -130,6 +130,23 @@ async def get_emails(limit: int = 20, relevant_only: bool = True):
 
     try:
         emails = await email_analysis_service.fetch_emails_async(limit)
+        
+        # Extract contact info for each email
+        from services.contact_extraction_service import contact_extraction_service
+        for email in emails:
+            try:
+                contact_info = await contact_extraction_service.extract_contact_info(
+                    email.get("subject", ""),
+                    email.get("fullBody", email.get("bodyPreview", "")),
+                    email.get("sender", "")
+                )
+                email["extractedPhone"] = contact_info.get("phone")
+                email["extractedCompany"] = contact_info.get("company")
+            except Exception as exc:
+                api_logger.warning(f"Failed to extract contact info for email {email.get('id')}: {exc}")
+                email["extractedPhone"] = None
+                email["extractedCompany"] = None
+                
     except Exception as exc:
         api_logger.error(f"Failed to fetch emails: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))

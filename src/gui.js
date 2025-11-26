@@ -198,7 +198,7 @@ function parseSender(sender = "") {
   return result;
 }
 
-function populateDefaultContact(email) {
+async function populateDefaultContact(email) {
   const defaults = { name: "", email: "", phone: "", company: "" };
   if (!email) return defaults;
 
@@ -207,6 +207,41 @@ function populateDefaultContact(email) {
   defaults.email = parsed.email || "";
   defaults.phone = parsed.phone || "";
   defaults.company = "";
+
+  // Try to extract phone and company from email body
+  const emailText = (email.fullBody || email.bodyPreview || "").trim();
+  if (emailText) {
+    // Extract phone using regex
+    const phonePatterns = [
+      /\+?7\s?\(?\d{3}\)?\s?\d{3}[\s-]?\d{2}[\s-]?\d{2}/g, // +7 (XXX) XXX-XX-XX
+      /\+?7\s?\d{10}/g, // +7XXXXXXXXXX
+      /\+?\d{1,3}[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/g, // International
+    ];
+    
+    for (const pattern of phonePatterns) {
+      const matches = emailText.match(pattern);
+      if (matches && matches.length > 0) {
+        defaults.phone = matches[0].replace(/\s/g, "").trim();
+        break;
+      }
+    }
+
+    // Extract company name using regex patterns
+    const companyPatterns = [
+      /(?:ООО|ТОО|ИП|АО|ЗАО|ПАО)\s*["«]?([^"»\n,]+)["»]?/i,
+      /(?:компания|фирма|организация)\s*["«]?([^"»\n,]+)["»]?/i,
+      /["«]([^"»\n,]{3,30})["»]/,
+    ];
+
+    for (const pattern of companyPatterns) {
+      const match = emailText.match(pattern);
+      if (match && match[1]) {
+        defaults.company = match[1].trim();
+        break;
+      }
+    }
+  }
+
   return defaults;
 }
 
@@ -274,11 +309,13 @@ function applyDraftOrDefaults(email) {
     return;
   }
 
-  const defaults = populateDefaultContact(email);
-  els.crmContactName.value = defaults.name;
-  if (els.crmContactEmail) els.crmContactEmail.value = defaults.email;
-  if (els.crmContactPhone) els.crmContactPhone.value = defaults.phone;
-  if (els.crmContactCompany) els.crmContactCompany.value = defaults.company;
+  // Use async populateDefaultContact
+  populateDefaultContact(email).then((defaults) => {
+    els.crmContactName.value = defaults.name;
+    if (els.crmContactEmail) els.crmContactEmail.value = defaults.email;
+    if (els.crmContactPhone) els.crmContactPhone.value = defaults.phone;
+    if (els.crmContactCompany) els.crmContactCompany.value = defaults.company;
+  });
   if (els.crmChannel) els.crmChannel.value = "email";
   if (els.crmFollowUpHours) els.crmFollowUpHours.value = els.crmFollowUpHours.value || "4";
   if (els.crmResponsibleId) els.crmResponsibleId.value = "";
