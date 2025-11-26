@@ -328,22 +328,21 @@ function applyDraftOrDefaults(email) {
     return;
   }
 
-  // Use async populateDefaultContact
-  populateDefaultContact(email).then((defaults) => {
-    els.crmContactName.value = defaults.name;
-    if (els.crmContactEmail) els.crmContactEmail.value = defaults.email;
-    if (els.crmContactPhone) {
-      // Use extracted phone from backend if available
-      els.crmContactPhone.value = email.extractedPhone || defaults.phone || "";
-    }
-    if (els.crmContactCompany) {
-      // Use extracted company from backend if available
-      els.crmContactCompany.value = email.extractedCompany || defaults.company || "";
-    }
-    
-    // Auto-fill 1C integration fields
-    populateOnecFields(email, defaults);
-  });
+  // Populate contact fields
+  const defaults = populateDefaultContact(email);
+  els.crmContactName.value = defaults.name;
+  if (els.crmContactEmail) els.crmContactEmail.value = defaults.email;
+  if (els.crmContactPhone) {
+    // Use extracted phone from backend if available
+    els.crmContactPhone.value = email.extractedPhone || defaults.phone || "";
+  }
+  if (els.crmContactCompany) {
+    // Use extracted company from backend if available
+    els.crmContactCompany.value = email.extractedCompany || defaults.company || "";
+  }
+  
+  // Auto-fill 1C integration fields
+  populateOnecFields(email, defaults);
   if (els.crmChannel) els.crmChannel.value = "email";
   if (els.crmFollowUpHours) els.crmFollowUpHours.value = els.crmFollowUpHours.value || "4";
   if (els.crmResponsibleId) els.crmResponsibleId.value = "";
