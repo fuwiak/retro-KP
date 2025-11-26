@@ -32,6 +32,9 @@ from services.crm_service import (
     DocumentChecklist,
     CRMConfigurationError,
 )
+from services.sla_monitor_service import sla_monitor_service
+from services.call_transcription_service import call_transcription_service
+from services.document_control_service import document_control_service
 
 # Load environment variables
 load_dotenv()
@@ -239,6 +242,91 @@ async def ensure_lead_documents(lead_id: int, request: CRMDocumentControlRequest
     except Exception as exc:
         api_logger.error(f"CRM document control failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to ensure document tasks")
+
+
+class CRMProposalSentRequest(BaseModel):
+    proposal_amount: Optional[float] = None
+    proposal_text: Optional[str] = None
+    responsible_user_id: Optional[int] = None
+
+
+@app.post("/api/crm/leads/{lead_id}/proposal-sent")
+async def handle_proposal_sent(lead_id: int, request: CRMProposalSentRequest):
+    """Handle commercial proposal sent: move to stage, set amount, create follow-up task."""
+
+    try:
+        result = await crm_service.handle_proposal_sent(
+            lead_id,
+            proposal_amount=request.proposal_amount,
+            proposal_text=request.proposal_text,
+            responsible_user_id=request.responsible_user_id,
+        )
+        return result
+    except CRMConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        api_logger.error(f"CP control failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to handle proposal sent")
+
+
+@app.get("/api/crm/leads/{lead_id}/documents/check")
+async def check_lead_documents(lead_id: int):
+    """Check which document files are attached to the lead."""
+
+    try:
+        result = await crm_service.check_document_files(lead_id)
+        return result
+    except CRMConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        api_logger.error(f"Document check failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to check documents")
+
+
+@app.post("/api/crm/sla/check")
+async def check_sla(lead_id: Optional[int] = None):
+    """Check for overdue tasks and send notifications."""
+
+    try:
+        result = await sla_monitor_service.check_overdue_tasks(lead_id)
+        return result
+    except Exception as exc:
+        api_logger.error(f"SLA check failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to check SLA")
+
+
+class CallProcessingRequest(BaseModel):
+    recording_url: Optional[str] = None
+    transcription_text: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+@app.post("/api/crm/calls/process")
+async def process_call(request: CallProcessingRequest):
+    """Process call recording and generate summary."""
+
+    try:
+        result = await call_transcription_service.process_call(
+            recording_url=request.recording_url,
+            transcription_text=request.transcription_text,
+            metadata=request.metadata,
+        )
+        return result
+    except Exception as exc:
+        api_logger.error(f"Call processing failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to process call")
+
+
+@app.post("/api/crm/leads/{lead_id}/documents/remind")
+async def remind_about_documents(lead_id: int):
+    """Check document completeness and send reminder if needed."""
+
+    try:
+        result = await document_control_service.check_and_remind(lead_id)
+        return result
+    except Exception as exc:
+        api_logger.error(f"Document reminder failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to send reminder")
 
 
 class OneCInvoiceItem(BaseModel):

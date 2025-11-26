@@ -81,8 +81,47 @@ class CRMService:
 
         self._validate_config()
 
+        # Lazy import to avoid circular dependencies
+        from services.pipeline_service import pipeline_service
+        from services.data_extraction_service import data_extraction_service
+
+        # Detect pipeline type
+        pipeline_info = await pipeline_service.detect_pipeline(
+            payload.subject,
+            payload.message,
+            payload.metadata,
+        )
+
+        # Extract structured data from correspondence
+        extracted_data = await data_extraction_service.extract_deal_data(
+            payload.subject,
+            payload.message,
+            payload.metadata,
+        )
+
+        # Merge extracted data into metadata
+        if not payload.metadata:
+            payload.metadata = {}
+        payload.metadata["pipeline_type"] = pipeline_info.get("pipeline_type")
+        payload.metadata["pipeline_confidence"] = pipeline_info.get("confidence")
+        if extracted_data.get("total_amount"):
+            payload.metadata["budget"] = extracted_data["total_amount"]
+        if extracted_data.get("products"):
+            payload.metadata["products"] = extracted_data["products"]
+
         contact_id = await self._upsert_contact(payload.contact)
-        lead_id = await self._ensure_open_lead(contact_id, payload)
+        
+        # Use detected pipeline_id if available
+        detected_pipeline_id = pipeline_info.get("pipeline_id")
+        if detected_pipeline_id:
+            original_pipeline_id = self.pipeline_id
+            self.pipeline_id = detected_pipeline_id
+        
+        try:
+            lead_id = await self._ensure_open_lead(contact_id, payload)
+        finally:
+            if detected_pipeline_id:
+                self.pipeline_id = original_pipeline_id
 
         await self._attach_interaction_note(lead_id, payload)
         await self._ensure_follow_up_task(lead_id, payload)
@@ -93,6 +132,8 @@ class CRMService:
         return {
             "contact_id": contact_id,
             "lead_id": lead_id,
+            "pipeline_type": pipeline_info.get("pipeline_type"),
+            "extracted_data": extracted_data,
         }
 
     async def ensure_document_completeness(
@@ -350,6 +391,101 @@ class CRMService:
             title="Поступление оплаты",
             details="\n".join(parts),
         )
+
+    async def handle_proposal_sent(
+        self,
+        lead_id: int,
+        proposal_amount: float | None = None,
+        proposal_text: str | None = None,
+        responsible_user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Handle commercial proposal sent: move to stage, set amount, create follow-up task."""
+        
+        # Update lead amount if provided
+        if proposal_amount:
+            try:
+                await self._request(
+                    "PATCH",
+                    f"/api/v4/leads/{lead_id}",
+                    json={"price": proposal_amount},
+                )
+            except Exception as exc:
+                logger.warning("Failed to update lead amount: %s", exc)
+
+        # Move to "CP sent" stage (if configured)
+        cp_sent_status_id = self._maybe_int(os.getenv("AMO_CP_SENT_STATUS_ID"))
+        if cp_sent_status_id:
+            try:
+                await self._request(
+                    "PATCH",
+                    f"/api/v4/leads/{lead_id}",
+                    json={"status_id": cp_sent_status_id},
+                )
+            except Exception as exc:
+                logger.warning("Failed to move lead to CP sent stage: %s", exc)
+
+        # Create task for next day: "Уточнить статус КП"
+        from datetime import datetime, timedelta, timezone
+        next_day = datetime.now(timezone.utc) + timedelta(days=1)
+        task_payload = {
+            "text": "Уточнить статус КП",
+            "complete_till": int(next_day.timestamp()),
+            "entity_id": lead_id,
+            "entity_type": "leads",
+            "responsible_user_id": responsible_user_id or self.default_responsible_id,
+        }
+        try:
+            await self._request("POST", "/api/v4/tasks", json={"tasks": [task_payload]})
+        except Exception as exc:
+            logger.warning("Failed to create CP follow-up task: %s", exc)
+
+        # Add note
+        note_text = "Коммерческое предложение отправлено"
+        if proposal_amount:
+            note_text += f"\nСумма: {proposal_amount:.2f}"
+        if proposal_text:
+            note_text += f"\n---\n{proposal_text[:500]}"
+        
+        await self.add_lead_note(lead_id, "КП отправлено", note_text)
+
+        return {"lead_id": lead_id, "status": "proposal_sent"}
+
+    async def check_document_files(self, lead_id: int) -> Dict[str, Any]:
+        """Check which document files are attached to the lead."""
+        
+        try:
+            # Get lead files
+            response = await self._request("GET", f"/api/v4/leads/{lead_id}/files")
+            files = response.get("_embedded", {}).get("files", [])
+            
+            file_names = [f.get("name", "").lower() for f in files]
+            
+            checklist = {
+                "proposal": any("кп" in name or "коммерческое" in name or "предложение" in name for name in file_names),
+                "invoice": any("счет" in name or "invoice" in name for name in file_names),
+                "contract": any("договор" in name or "contract" in name for name in file_names),
+                "waybill": any("накладная" in name or "waybill" in name for name in file_names),
+                "act": any("акт" in name or "act" in name for name in file_names),
+                "invoice_factura": any("счет-фактура" in name or "упд" in name for name in file_names),
+            }
+            
+            all_present = all(checklist.values())
+            
+            return {
+                "lead_id": lead_id,
+                "files_count": len(files),
+                "checklist": checklist,
+                "complete": all_present,
+            }
+        except Exception as exc:
+            logger.error("Failed to check lead files: %s", exc)
+            return {
+                "lead_id": lead_id,
+                "files_count": 0,
+                "checklist": {},
+                "complete": False,
+                "error": str(exc),
+            }
 
     # ------------------------------------------------------------------
     # Contact helpers

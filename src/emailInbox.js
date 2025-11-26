@@ -1,8 +1,20 @@
 import { API_BASE_URL } from "./config.js";
 
-function handleResponse(response, fallbackMessage) {
+async function handleResponse(response, fallbackMessage) {
   if (!response.ok) {
-    throw new Error(fallbackMessage || `Request failed with status ${response.status}`);
+    let errorMessage = fallbackMessage || `Request failed with status ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // If response is not JSON, use the status text
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 }

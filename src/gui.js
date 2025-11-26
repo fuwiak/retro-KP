@@ -417,6 +417,10 @@ async function refreshCrmInbox() {
       relevantOnly: crmState.relevantOnly,
     });
 
+    if (!Array.isArray(emails)) {
+      throw new Error("Сервер вернул неверный формат данных");
+    }
+
     crmState.emails = emails;
     let newIndex = null;
     if (previousId) {
@@ -437,14 +441,25 @@ async function refreshCrmInbox() {
       setCrmStatus(`Загружено ${emails.length} писем`, "success");
       log(`📬 Загружено ${emails.length} писем из IMAP (API ${getApiBaseUrl()})`);
     } else {
-      setCrmStatus("Нет писем", "info");
+      setCrmStatus("Нет писем для отображения", "info");
+      log("ℹ️ Писем не найдено (возможно, все отфильтрованы или IMAP пуст)");
     }
   } catch (error) {
-    console.error(error);
-    setCrmStatus(error.message || "Не удалось загрузить письма", "error");
-    log(`❌ Ошибка загрузки писем: ${error.message || error}`);
+    console.error("Email fetch error:", error);
+    const errorMsg = error.message || "Не удалось загрузить письма";
+    setCrmStatus(errorMsg, "error");
+    log(`❌ Ошибка загрузки писем: ${errorMsg}`);
+    
+    // Clear email list on error
+    crmState.emails = [];
+    crmState.selectedIndex = null;
+    renderCrmEmailList();
+    renderCrmDetail();
   } finally {
     crmState.loading = false;
+    if (els.crmRefreshBtn) {
+      els.crmRefreshBtn.disabled = false;
+    }
   }
 }
 
