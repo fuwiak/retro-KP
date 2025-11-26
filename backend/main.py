@@ -126,10 +126,10 @@ class EmailProposalRequest(BaseModel):
 
 @app.get("/api/emails", response_model=List[EmailItem])
 async def get_emails(limit: int = 20, relevant_only: bool = True):
-    """Fetch recent emails from IMAP inbox."""
+    """Fetch recent emails from IMAP inbox or generate mock data."""
 
     try:
-        emails = await asyncio.to_thread(email_analysis_service.fetch_emails, limit)
+        emails = await email_analysis_service.fetch_emails_async(limit)
     except Exception as exc:
         api_logger.error(f"Failed to fetch emails: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -138,6 +138,24 @@ async def get_emails(limit: int = 20, relevant_only: bool = True):
         emails = [email for email in emails if email.get("nlpCategory") == "potential"]
 
     return emails
+
+
+@app.post("/api/emails/mock-mode")
+async def toggle_mock_mode(enabled: bool):
+    """Enable or disable mock data mode."""
+    email_analysis_service.set_mock_mode(enabled)
+    return {
+        "mock_mode": email_analysis_service.is_mock_mode(),
+        "message": f"Mock mode {'enabled' if enabled else 'disabled'}",
+    }
+
+
+@app.get("/api/emails/mock-mode")
+async def get_mock_mode_status():
+    """Get current mock mode status."""
+    return {
+        "mock_mode": email_analysis_service.is_mock_mode(),
+    }
 
 
 @app.post("/api/emails/classify")

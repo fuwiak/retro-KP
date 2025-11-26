@@ -40,15 +40,27 @@ class EmailAnalysisService:
         self.groq_proposal_model = os.getenv("GROQ_PROPOSAL_MODEL", self.groq_email_model)
 
         self._nlp = self._load_nlp_model()
+        self._mock_mode = False  # Mock mode flag
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    async def fetch_emails_async(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Fetch emails (real or mock) asynchronously."""
+        if self._mock_mode:
+            return await self.generate_mock_emails(limit)
+        return await asyncio.to_thread(self.fetch_emails, limit)
+
     def fetch_emails(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Fetch latest emails from the IMAP inbox.
 
         The result is ordered from newest to oldest.
         """
+
+        if self._mock_mode:
+            # This shouldn't be called in mock mode, but handle it gracefully
+            logger.warning("fetch_emails called in mock mode, use fetch_emails_async instead")
+            return []
 
         if not self.imap_server or not self.imap_username or not self.imap_password:
             raise ValueError("IMAP configuration is incomplete. Check IMAP_* environment variables.")

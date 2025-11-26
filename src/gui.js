@@ -12,6 +12,7 @@ const els = {
   logArea: document.getElementById("logArea"),
   logClose: document.getElementById("logClose"),
   crmRefreshBtn: document.getElementById("crmRefreshBtn"),
+  crmMockToggleBtn: document.getElementById("crmMockToggleBtn"),
   crmRelevantOnly: document.getElementById("crmRelevantOnly"),
   crmEmailLimit: document.getElementById("crmEmailLimit"),
   crmChannel: document.getElementById("crmChannel"),
@@ -132,6 +133,7 @@ const crmState = {
   proposals: new Map(),
   drafts: new Map(),
   completed: new Set(),
+  mockMode: false,
 };
 
 function getSelectedEmail() {
@@ -663,6 +665,79 @@ if (els.crmEmailList) {
 
 if (els.crmRefreshBtn) {
   els.crmRefreshBtn.addEventListener("click", () => refreshCrmInbox());
+}
+
+async function toggleMockMode() {
+  if (!els.crmMockToggleBtn) return;
+  
+  const newState = !crmState.mockMode;
+  els.crmMockToggleBtn.disabled = true;
+  setCrmStatus(newState ? "Включаем тестовые данные..." : "Выключаем тестовые данные...");
+  
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/emails/mock-mode`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ enabled: newState }),
+    });
+    
+    if (!response.ok) {
+      throw new Error("Не удалось переключить режим тестовых данных");
+    }
+    
+    const data = await response.json();
+    crmState.mockMode = data.mock_mode;
+    
+    // Update button appearance
+    if (els.crmMockToggleBtn) {
+      els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Mock ON" : "🧪 Mock Data";
+      els.crmMockToggleBtn.style.background = crmState.mockMode 
+        ? "rgba(0, 255, 128, 0.2)" 
+        : "rgba(0, 0, 0, 0.8)";
+    }
+    
+    setCrmStatus(data.message || (crmState.mockMode ? "Тестовые данные включены" : "Тестовые данные выключены"), "success");
+    log(`🧪 ${data.message || (crmState.mockMode ? "Mock mode включен" : "Mock mode выключен")}`);
+    
+    // Refresh inbox to show mock or real emails
+    await refreshCrmInbox();
+  } catch (error) {
+    console.error(error);
+    setCrmStatus(error.message || "Ошибка переключения режима", "error");
+    log(`❌ Ошибка mock mode: ${error.message || error}`);
+  } finally {
+    if (els.crmMockToggleBtn) {
+      els.crmMockToggleBtn.disabled = false;
+    }
+  }
+}
+
+async function checkMockModeStatus() {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/emails/mock-mode`);
+    if (response.ok) {
+      const data = await response.json();
+      crmState.mockMode = data.mock_mode;
+      
+      if (els.crmMockToggleBtn) {
+        els.crmMockToggleBtn.textContent = crmState.mockMode ? "✅ Mock ON" : "🧪 Mock Data";
+        els.crmMockToggleBtn.style.background = crmState.mockMode 
+          ? "rgba(0, 255, 128, 0.2)" 
+          : "rgba(0, 0, 0, 0.8)";
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to check mock mode status:", error);
+  }
+}
+
+if (els.crmMockToggleBtn) {
+  els.crmMockToggleBtn.addEventListener("click", toggleMockMode);
+  // Check initial status on load
+  checkMockModeStatus();
 }
 
 if (els.crmRelevantOnly) {
