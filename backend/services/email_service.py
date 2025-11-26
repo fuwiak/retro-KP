@@ -508,6 +508,8 @@ class EmailAnalysisService:
 - Реалистичное имя отправителя и email
 - Тему письма
 - Текст запроса с деталями (товары, количество, цены, сроки, адреса)
+- Номер телефона в формате +7 (XXX) XXX-XX-XX или +7XXXXXXXXXX
+- Название компании (ООО, ТОО, ИП и т.д.)
 
 Ответь ТОЛЬКО в формате JSON объекта с ключом "emails":
 {{
@@ -515,8 +517,10 @@ class EmailAnalysisService:
     {{
       "sender": "Имя Фамилия <email@example.com>",
       "subject": "Тема письма",
-      "body": "Полный текст письма с деталями запроса",
-      "date": "2025-11-26 10:30:00"
+      "body": "Полный текст письма с деталями запроса. В тексте обязательно должен быть номер телефона и название компании.",
+      "date": "2025-11-26 10:30:00",
+      "phone": "+7 (XXX) XXX-XX-XX",
+      "company": "ООО Название компании"
     }},
     ...
   ]
@@ -621,10 +625,20 @@ class EmailAnalysisService:
             template = mock_templates[idx % len(mock_templates)]
             email_date = base_date - timedelta(hours=count - idx)
 
+            # Ensure phone and company are in the body
+            body = template["body"]
+            phone = template.get("phone", "")
+            company = template.get("company", "")
+            
+            if phone and phone not in body:
+                body = f"{body}\n\nКонтактный телефон: {phone}"
+            if company and company not in body:
+                body = f"{body}\n\nКомпания: {company}"
+
             nlp_category = self.simple_nlp_filter(
                 template["subject"],
                 template["sender"],
-                template["body"]
+                body
             )
 
             mock_emails.append({
@@ -632,9 +646,11 @@ class EmailAnalysisService:
                 "subject": template["subject"],
                 "sender": template["sender"],
                 "date": email_date.strftime("%Y-%m-%d %H:%M:%S"),
-                "bodyPreview": template["body"][:300],
-                "fullBody": template["body"],
+                "bodyPreview": body[:300],
+                "fullBody": body,
                 "nlpCategory": nlp_category,
+                "extractedPhone": phone,
+                "extractedCompany": company,
             })
 
         return mock_emails

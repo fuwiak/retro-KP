@@ -12,6 +12,9 @@ const els = {
   logDrawer: document.getElementById("logDrawer"),
   logArea: document.getElementById("logArea"),
   logClose: document.getElementById("logClose"),
+  onecToggle: document.getElementById("onecToggle"),
+  onecDrawer: document.getElementById("onecDrawer"),
+  onecClose: document.getElementById("onecClose"),
   crmRefreshBtn: document.getElementById("crmRefreshBtn"),
   crmMockToggleBtn: document.getElementById("crmMockToggleBtn"),
   crmRelevantOnly: document.getElementById("crmRelevantOnly"),
@@ -697,6 +700,19 @@ if (els.logToggle && els.logDrawer) {
 if (els.logClose && els.logDrawer) {
   els.logClose.addEventListener("click", () => {
     els.logDrawer.style.bottom = "-320px";
+  });
+}
+
+// 1C Integration drawer toggle
+if (els.onecToggle && els.onecDrawer) {
+  els.onecToggle.addEventListener("click", () => {
+    els.onecDrawer.style.bottom = els.onecDrawer.style.bottom === "40px" ? "-500px" : "40px";
+  });
+}
+
+if (els.onecClose && els.onecDrawer) {
+  els.onecClose.addEventListener("click", () => {
+    els.onecDrawer.style.bottom = "-500px";
   });
 }
 

@@ -865,9 +865,17 @@
       </div>
     </div>
 
-    <!-- 1C INTEGRATION SECTION -->
-    <div class="panel" id="onecIntegrationSection" style="max-width: 1220px; margin: 12px auto;">
-      <h2>📄 Интеграция с 1С <span class="expand">⤡</span></h2>
+    <!-- 1C INTEGRATION TOGGLE BUTTON -->
+    <button id="onecToggle" style="position: fixed; bottom: 12px; right: 200px; border: 1px solid var(--ui-color); color: var(--ui-color); background: rgba(0, 0, 0, 0.7); padding: 6px 10px; font-size: 0.75rem; cursor: pointer; text-shadow: 0 0 6px var(--ui-color); z-index: 100;">
+      📄 1С
+    </button>
+    
+    <!-- 1C INTEGRATION DRAWER -->
+    <div id="onecDrawer" style="position: fixed; bottom: -500px; right: 12px; width: 600px; max-height: 500px; background: rgba(0,0,0,0.92); border: 1px solid var(--ui-color); box-shadow: 0 0 12px var(--ui-color); padding: 10px; transition: bottom 0.4s ease; display: flex; flex-direction: column; z-index: 110; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <h2 style="margin: 0; font-size: 0.85rem;">📄 Интеграция с 1С</h2>
+        <button id="onecClose" style="background: rgba(0,0,0,0.6); border: 1px solid var(--ui-color); color: var(--ui-color); font-size: 0.7rem; padding: 2px 6px; cursor: pointer;">✖</button>
+      </div>
       <div style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
           <label>ID сделки: <input type="number" id="onecLeadId" placeholder="ID сделки" style="width: 120px;" /></label>
