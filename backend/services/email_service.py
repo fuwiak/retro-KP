@@ -379,6 +379,158 @@ class EmailAnalysisService:
                 "potential_services": [],
             }
 
+    async def generate_mock_emails(self, count: int = 10) -> List[Dict[str, Any]]:
+        """Generate realistic mock emails using Groq LLM."""
+        
+        if not self.groq_api_key:
+            # Fallback to simple mock data
+            return self._generate_simple_mock_emails(count)
+
+        try:
+            prompt = f"""Создай {count} реалистичных входящих писем от клиентов для CRM системы.
+
+Письма должны быть разнообразными:
+- Запросы на оборудование (АВР, контакторы, реле)
+- Запросы на услуги (монтаж, ремонт, обслуживание)
+- Запросы на изготовление на заказ (НКУ)
+- Разные компании и имена
+- Разные суммы и сроки
+
+Каждое письмо должно содержать:
+- Реалистичное имя отправителя и email
+- Тему письма
+- Текст запроса с деталями (товары, количество, цены, сроки, адреса)
+
+Ответь ТОЛЬКО в формате JSON объекта с ключом "emails":
+{{
+  "emails": [
+    {{
+      "sender": "Имя Фамилия <email@example.com>",
+      "subject": "Тема письма",
+      "body": "Полный текст письма с деталями запроса",
+      "date": "2025-11-26 10:30:00"
+    }},
+    ...
+  ]
+}}
+
+Важно: письма должны быть реалистичными и разнообразными."""
+
+            url = f"{self.groq_base_url}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": self.groq_email_model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.8,
+                "response_format": {"type": "json_object"},
+            }
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, json=payload, headers=headers)
+
+            if response.is_error:
+                logger.warning("Groq API error for mock generation, using fallback: %s", response.status_code)
+                return self._generate_simple_mock_emails(count)
+
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+
+            try:
+                result = json.loads(content)
+                # Handle both {"emails": [...]} and [...] formats
+                emails_data = result.get("emails", result) if isinstance(result, dict) else result
+                
+                if not isinstance(emails_data, list):
+                    emails_data = [emails_data]
+
+                mock_emails = []
+                for idx, email_data in enumerate(emails_data[:count]):
+                    subject = email_data.get("subject", f"Запрос #{idx + 1}")
+                    body = email_data.get("body", "")
+                    sender = email_data.get("sender", f"Клиент {idx + 1} <client{idx + 1}@example.com>")
+                    date_str = email_data.get("date", "")
+
+                    nlp_category = self.simple_nlp_filter(subject, sender, body)
+
+                    mock_emails.append({
+                        "id": f"mock_{idx + 1}",
+                        "subject": subject,
+                        "sender": sender,
+                        "date": date_str or f"2025-11-26 {10 + idx}:00:00",
+                        "bodyPreview": body[:300],
+                        "fullBody": body,
+                        "nlpCategory": nlp_category,
+                    })
+
+                return mock_emails
+            except (json.JSONDecodeError, ValueError, KeyError) as exc:
+                logger.warning("Failed to parse Groq mock response: %s", exc)
+                return self._generate_simple_mock_emails(count)
+
+        except Exception as exc:
+            logger.warning("Mock email generation failed: %s", exc)
+            return self._generate_simple_mock_emails(count)
+
+    def _generate_simple_mock_emails(self, count: int) -> List[Dict[str, Any]]:
+        """Generate simple mock emails without Groq."""
+        from datetime import datetime, timedelta
+
+        mock_templates = [
+            {
+                "sender": "Иван Петров <ivan.petrov@company.kz>",
+                "subject": "Запрос на АВР Stalker Electric 630А",
+                "body": "Добрый день! Нужен АВР Stalker Electric Т1+Т2, 630А, 400В, IP54. Количество: 2 шт. Срок доставки: до 15.12.2025. Адрес: г. Алматы, ул. Абая 150.",
+            },
+            {
+                "sender": "Мария Смирнова <maria@service.kz>",
+                "subject": "Требуется монтаж электрооборудования",
+                "body": "Здравствуйте! Нужен выезд специалиста для монтажа АВР на объекте. Адрес: г. Астана, пр. Кабанбай батыра 25. Дата: 20.12.2025. Мощность: 400А.",
+            },
+            {
+                "sender": "ТОО ЭнергоСервис <info@energo.kz>",
+                "subject": "Изготовление НКУ на заказ",
+                "body": "Добрый день! Требуется изготовление НКУ на заказ. Параметры: мощность 630А, ввод 400В, IP54. Количество: 1 комплект. Срок изготовления: 30 дней.",
+            },
+            {
+                "sender": "Алексей Козлов <alex@tech.kz>",
+                "subject": "Запрос на контакторы Siemens",
+                "body": "Нужны контакторы Siemens 3RT2026-1AP00 в количестве 5 шт. Цена: 8000 тенге за штуку. Доставка в г. Шымкент.",
+            },
+            {
+                "sender": "ООО ПромЭнерго <sales@promenergo.kz>",
+                "subject": "Ремонт АВР на объекте",
+                "body": "Требуется срочный ремонт АВР на объекте. Адрес выезда: г. Караганда, ул. Бухар жырау 45. Дата: срочно. Контакт: +7 777 123 4567.",
+            },
+        ]
+
+        mock_emails = []
+        base_date = datetime.now()
+
+        for idx in range(count):
+            template = mock_templates[idx % len(mock_templates)]
+            email_date = base_date - timedelta(hours=count - idx)
+
+            nlp_category = self.simple_nlp_filter(
+                template["subject"],
+                template["sender"],
+                template["body"]
+            )
+
+            mock_emails.append({
+                "id": f"mock_{idx + 1}",
+                "subject": template["subject"],
+                "sender": template["sender"],
+                "date": email_date.strftime("%Y-%m-%d %H:%M:%S"),
+                "bodyPreview": template["body"][:300],
+                "fullBody": template["body"],
+                "nlpCategory": nlp_category,
+            })
+
+        return mock_emails
+
     def set_mock_mode(self, enabled: bool) -> None:
         """Enable or disable mock data mode."""
         self._mock_mode = enabled
